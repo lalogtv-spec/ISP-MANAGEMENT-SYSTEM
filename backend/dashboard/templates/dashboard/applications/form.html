@@ -1,0 +1,86 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{% if application %}Edit Application{% else %}Create Application{% endif %} - ISP Management System{% endblock %}
+{% block page_title %}{% if application %}Edit {{ application.app_id }}{% else %}Create New Application{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        {% if error %}
+        <div style="background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if not application %}
+            <div class="form-group">
+                <label for="app_id">Application ID *</label>
+                <input type="text" id="app_id" name="app_id" required placeholder="e.g., APP-001">
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="name">Full Name *</label>
+                <input type="text" id="name" name="name" required value="{{ application.name|default:'' }}" placeholder="John Doe">
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" name="email" required value="{{ application.email|default:'' }}" placeholder="john@email.com">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone">Phone *</label>
+                <input type="tel" id="phone" name="phone" required value="{{ application.phone|default:'' }}" placeholder="09XXXXXXXXX">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="latitude">Latitude</label>
+                    <input type="text" id="latitude" name="latitude" value="{{ application.latitude|default:'' }}" readonly placeholder="Captured location latitude">
+                </div>
+                <div class="form-group">
+                    <label for="longitude">Longitude</label>
+                    <input type="text" id="longitude" name="longitude" value="{{ application.longitude|default:'' }}" readonly placeholder="Captured location longitude">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="address">Address *</label>
+                <textarea id="address" name="address" required placeholder="Street, Barangay, City">{{ application.address|default:'' }}</textarea>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="plan">Plan *</label>
+                    <input type="text" id="plan" name="plan" required value="{{ application.plan|default:'' }}" placeholder="Premium 100Mbps">
+                </div>
+                <div class="form-group">
+                    <label for="status">Status *</label>
+                    <select id="status" name="status" required>
+                        <option value="">Select Status</option>
+                        <option value="Pending" {% if application.status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Approved" {% if application.status == 'Approved' %}selected{% endif %}>Approved</option>
+                        <option value="Declined" {% if application.status == 'Declined' %}selected{% endif %}>Declined</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="date">Application Date *</label>
+                <input type="date" id="date" name="date" required value="{{ application.date|date:'Y-m-d'|default:'' }}">
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary">
+                    {% if application %}Update Application{% else %}Create Application{% endif %}
+                </button>
+                <a href="{% if application %}{% url 'dashboard:application_detail' application.app_id %}{% else %}{% url 'dashboard:applications_list' %}{% endif %}" class="btn" style="background: #e5e7eb; color: #1f2937;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

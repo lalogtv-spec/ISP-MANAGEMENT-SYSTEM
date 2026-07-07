@@ -1,0 +1,77 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{% if payment %}Edit Payment{% else %}Create Payment{% endif %} - ISP Management System{% endblock %}
+{% block page_title %}{% if payment %}Edit {{ payment.payment_id }}{% else %}Create New Payment{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px;">
+    <div class="card-body">
+        {% if error %}
+        <div style="background: #fee2e2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
+            {{ error }}
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            {% if not payment %}
+            <div class="form-group">
+                <label for="payment_id">Payment ID *</label>
+                <input type="text" id="payment_id" name="payment_id" required placeholder="e.g., PAY-001">
+            </div>
+            {% endif %}
+            
+            <div class="form-group">
+                <label for="client">Client Name *</label>
+                <input type="text" id="client" name="client" required value="{{ payment.client|default:'' }}" placeholder="John Doe">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="date">Payment Date *</label>
+                    <input type="date" id="date" name="date" required value="{{ payment.date|date:'Y-m-d'|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount *</label>
+                    <input type="number" id="amount" name="amount" required step="0.01" value="{{ payment.amount|default:0 }}" placeholder="1299.00">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="period">Billing Period *</label>
+                    <input type="text" id="period" name="period" required value="{{ payment.period|default:'' }}" placeholder="June 2026">
+                </div>
+                <div class="form-group">
+                    <label for="method">Payment Method *</label>
+                    <select id="method" name="method" required>
+                        <option value="">Select Method</option>
+                        <option value="Cash" {% if payment.method == 'Cash' %}selected{% endif %}>Cash</option>
+                        <option value="GCash" {% if payment.method == 'GCash' %}selected{% endif %}>GCash</option>
+                        <option value="Bank Transfer" {% if payment.method == 'Bank Transfer' %}selected{% endif %}>Bank Transfer</option>
+                        <option value="Cheque" {% if payment.method == 'Cheque' %}selected{% endif %}>Cheque</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="status">Status *</label>
+                <select id="status" name="status" required>
+                    <option value="">Select Status</option>
+                    <option value="Pending" {% if payment.status == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Verified" {% if payment.status == 'Verified' %}selected{% endif %}>Verified</option>
+                    <option value="Rejected" {% if payment.status == 'Rejected' %}selected{% endif %}>Rejected</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="btn btn-primary">
+                    {% if payment %}Update Payment{% else %}Create Payment{% endif %}
+                </button>
+                <a href="{% if payment %}{% url 'dashboard:payment_detail' payment.payment_id %}{% else %}{% url 'dashboard:payments_list' %}{% endif %}" class="btn" style="background: #e5e7eb; color: #1f2937;">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

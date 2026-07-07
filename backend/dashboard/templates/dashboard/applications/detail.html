@@ -1,0 +1,78 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ application.app_id }} - ISP Management System{% endblock %}
+{% block page_title %}Application: {{ application.app_id }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px;">
+    <div class="card-header">
+        <h3>Application Details</h3>
+        <a href="{% url 'dashboard:application_edit' application.app_id %}" class="btn btn-primary">Edit</a>
+    </div>
+    <div class="card-body">
+        <table style="width: 100%; line-height: 2;">
+            <tr>
+                <td><strong>Application ID:</strong></td>
+                <td>{{ application.app_id }}</td>
+            </tr>
+            <tr>
+                <td><strong>Name:</strong></td>
+                <td>{{ application.name }}</td>
+            </tr>
+            <tr>
+                <td><strong>Email:</strong></td>
+                <td>{{ application.email }}</td>
+            </tr>
+            <tr>
+                <td><strong>Phone:</strong></td>
+                <td>{{ application.phone }}</td>
+            </tr>
+            <tr>
+                <td><strong>Address:</strong></td>
+                <td>{{ application.address }}</td>
+            </tr>
+            <tr>
+                <td><strong>Latitude:</strong></td>
+                <td>{{ application.latitude|default:"-" }}</td>
+            </tr>
+            <tr>
+                <td><strong>Longitude:</strong></td>
+                <td>{{ application.longitude|default:"-" }}</td>
+            </tr>
+            {% if application.latitude and application.longitude %}
+            <tr>
+                <td><strong>Map Link:</strong></td>
+                <td>
+                    <a href="https://www.google.com/maps?q={{ application.latitude }},{{ application.longitude }}" target="_blank" rel="noopener noreferrer">Open Google Maps</a>
+                </td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td><strong>Plan:</strong></td>
+                <td>{{ application.plan }}</td>
+            </tr>
+            <tr>
+                <td><strong>Status:</strong></td>
+                <td>
+                    <span class="badge badge-{% if application.status == 'Approved' %}success{% elif application.status == 'Declined' %}danger{% else %}info{% endif %}">
+                        {{ application.status }}
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td><strong>Application Date:</strong></td>
+                <td>{{ application.date|date:"M d, Y" }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div style="margin-top: 20px; display: flex; gap: 10px;">
+    <a href="{% url 'dashboard:application_edit' application.app_id %}" class="btn btn-primary">Edit Application</a>
+    <form method="post" action="{% url 'dashboard:application_delete' application.app_id %}" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete Application</button>
+    </form>
+    <a href="{% url 'dashboard:applications_list' %}" class="btn" style="background: #e5e7eb; color: #1f2937;">Back to List</a>
+</div>
+{% endblock %}

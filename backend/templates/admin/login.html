@@ -1,0 +1,144 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate 'Log in' %} | NetConnect ISP{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    body.login {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+    }
+
+    body.login #container {
+        width: min(460px, 100%);
+        margin: 0;
+    }
+
+    body.login #header,
+    body.login .main {
+        border-radius: 20px;
+    }
+
+    body.login .main {
+        overflow: hidden;
+    }
+
+    body.login #content {
+        padding: 24px;
+    }
+
+    body.login #content-main {
+        width: 100%;
+    }
+
+    body.login #site-name {
+        text-align: center;
+    }
+
+    body.login .admin-brand-subtitle {
+        text-align: center;
+    }
+
+    body.login .login .form-row {
+        margin-bottom: 16px;
+    }
+
+    body.login .login .form-row label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--nc-muted);
+        font-weight: 600;
+    }
+
+    body.login .login .form-row input {
+        width: 100%;
+    }
+
+    body.login .submit-row {
+        padding: 0;
+        background: transparent;
+        border: 0;
+        margin-top: 20px;
+    }
+
+    body.login .submit-row input {
+        width: 100%;
+        padding: 12px 18px;
+        font-size: 0.98rem;
+        font-weight: 700;
+    }
+
+    body.login .password-reset-link {
+        margin-top: 14px;
+        text-align: center;
+    }
+
+    body.login .password-reset-link a {
+        color: var(--nc-primary-3);
+    }
+
+    body.login .errornote {
+        margin-bottom: 16px;
+    }
+
+    body.login .form-row .help {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block usertools %}{% endblock %}
+{% block nav-global %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+{% block content_title %}{% endblock %}
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block content %}
+{% if form.errors and not form.non_field_errors %}
+<p class="errornote">
+{% blocktranslate count counter=form.errors.items|length %}Please correct the error below.{% plural %}Please correct the errors below.{% endblocktranslate %}
+</p>
+{% endif %}
+
+{% if form.non_field_errors %}
+{% for error in form.non_field_errors %}
+<p class="errornote">{{ error }}</p>
+{% endfor %}
+{% endif %}
+
+<div id="content-main">
+    {% if user.is_authenticated %}
+    <p class="errornote">
+    {% blocktranslate trimmed %}
+        You are authenticated as {{ username }}, but are not authorized to access this page. Would you like to login to a different account?
+    {% endblocktranslate %}
+    </p>
+    {% endif %}
+
+    <form action="{{ app_path }}" method="post" id="login-form">
+        {% csrf_token %}
+        <div class="form-row">
+            {{ form.username.errors }}
+            {{ form.username.label_tag }} {{ form.username }}
+        </div>
+        <div class="form-row">
+            {{ form.password.errors }}
+            {{ form.password.label_tag }} {{ form.password }}
+            <input type="hidden" name="next" value="{{ next }}">
+        </div>
+        {% url 'admin_password_reset' as password_reset_url %}
+        {% if password_reset_url %}
+        <div class="password-reset-link">
+            <a href="{{ password_reset_url }}">{% translate 'Forgotten your password or username?' %}</a>
+        </div>
+        {% endif %}
+        <div class="submit-row">
+            <input type="submit" value="{% translate 'Log in' %}">
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ ticket.ticket_id }} - ISP Management System{% endblock %}
+{% block page_title %}Ticket: {{ ticket.ticket_id }}{% endblock %}
+
+{% block content %}
+<style>
+    .ticket-detail-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1.7fr 1fr;
+    }
+    .ticket-detail-main {
+        background: #111827;
+        border: 1px solid rgba(148,163,184,0.15);
+        border-radius: 24px;
+        padding: 1.5rem;
+    }
+    .ticket-detail-sidebar {
+        background: rgba(15,23,42,0.95);
+        border: 1px solid rgba(148,163,184,0.18);
+        border-radius: 24px;
+        padding: 1.5rem;
+        display: grid;
+        gap: 1rem;
+    }
+    .ticket-detail-header {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1.2rem;
+    }
+    .ticket-detail-id {
+        font-size: 0.85rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+    }
+    .ticket-detail-category {
+        padding: 0.55rem 1rem;
+        border-radius: 9999px;
+        background: rgba(59,130,246,0.16);
+        color: #bfdbfe;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .ticket-detail-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-bottom: 0.75rem;
+    }
+    .ticket-detail-subtitle {
+        color: #cbd5e1;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+    }
+    .ticket-detail-meta {
+        display: grid;
+        gap: 1rem;
+    }
+    .ticket-detail-meta-item {
+        display: grid;
+        gap: 0.35rem;
+    }
+    .ticket-detail-meta-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+    }
+    .ticket-detail-meta-value {
+        color: #f8fafc;
+        font-size: 0.98rem;
+    }
+    .ticket-detail-actions {
+        display: grid;
+        gap: 0.9rem;
+        margin-top: 1rem;
+    }
+    .ticket-detail-actions .btn {
+        width: 100%;
+        padding: 14px 18px;
+        font-size: 0.95rem;
+    }
+    .ticket-detail-description {
+        margin-top: 1rem;
+        line-height: 1.8;
+        color: #cbd5e1;
+        font-size: 1rem;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        max-width: 100%;
+        min-width: 0;
+    }
+    .ticket-detail-card {
+        display: grid;
+        gap: 1rem;
+    }
+</style>
+<div class="ticket-detail-grid">
+    <section class="ticket-detail-main" style="grid-column: 1 / -1;">
+        <div class="ticket-detail-header">
+            <div class="ticket-detail-id">#{{ ticket.ticket_id }}</div>
+            <div class="ticket-detail-category">{{ ticket.category }}</div>
+        </div>
+        <div class="ticket-detail-title">{{ ticket.client }}</div>
+        <div class="ticket-detail-subtitle">Priority: {{ ticket.priority }} · Status: {{ ticket.status }} · Assigned: {{ ticket.assigned }}</div>
+        <div class="ticket-detail-meta">
+            <div class="ticket-detail-meta-item">
+                <p class="ticket-detail-meta-label">Created</p>
+                <p class="ticket-detail-meta-value">{{ ticket.created|date:"M d, Y" }}</p>
+            </div>
+            {% if ticket.scheduled_date %}
+            <div class="ticket-detail-meta-item">
+                <p class="ticket-detail-meta-label">Scheduled</p>
+                <p class="ticket-detail-meta-value">{{ ticket.scheduled_date|date:"M d, Y" }}{% if ticket.scheduled_time %} · {{ ticket.scheduled_time|time:"h:i A" }}{% endif %}</p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="ticket-detail-description">{{ ticket.description }}</div>
+</section>
+</div>
+{% endblock %}

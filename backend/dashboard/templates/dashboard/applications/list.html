@@ -1,0 +1,79 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Applications - ISP Management System{% endblock %}
+{% block page_title %}Applications{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; gap: 10px;">
+    <form method="get" style="display: flex; gap: 10px; flex: 1;">
+        <input type="text" name="search" placeholder="Search applications..." value="{{ search_query }}" style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;">
+        <select name="status" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;">
+            <option value="">All Status</option>
+            <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+            <option value="Approved" {% if status_filter == 'Approved' %}selected{% endif %}>Approved</option>
+            <option value="Declined" {% if status_filter == 'Declined' %}selected{% endif %}>Declined</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+    <a href="{% url 'dashboard:application_create' %}" class="btn btn-primary">+ New Application</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if applications %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>App ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Location</th>
+                    <th>Plan</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for application in applications %}
+                <tr>
+                    <td><strong>{{ application.app_id }}</strong></td>
+                    <td>{{ application.name }}</td>
+                    <td>{{ application.email }}</td>
+                    <td>{{ application.phone }}</td>
+                    <td>
+                        {% if application.latitude and application.longitude %}
+                            <div style="font-size: 12px;">
+                                <div>Captured</div>
+                                <div style="color: #6b7280;">{{ application.latitude }}, {{ application.longitude }}</div>
+                            </div>
+                        {% else %}
+                            <span style="color: #6b7280;">No GPS data</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ application.plan }}</td>
+                    <td>
+                        <span class="badge badge-{% if application.status == 'Approved' %}success{% elif application.status == 'Declined' %}danger{% else %}info{% endif %}">
+                            {{ application.status }}
+                        </span>
+                    </td>
+                    <td>{{ application.date|date:"M d, Y" }}</td>
+                    <td>
+                        <a href="{% url 'dashboard:application_detail' application.app_id %}" class="btn btn-primary btn-sm">View</a>
+                        <a href="{% url 'dashboard:application_edit' application.app_id %}" class="btn btn-primary btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:application_delete' application.app_id %}" style="display: inline;" onsubmit="return confirm('Delete this application?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; color: #6b7280; padding: 20px;">No applications found</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

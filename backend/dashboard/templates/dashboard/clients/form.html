@@ -1,0 +1,284 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{% if client %}Edit Client{% else %}Create Client{% endif %} - ISP Management System{% endblock %}
+{% block page_title %}{% if client %}Edit Client{% else %}Create Client{% endif %}{% endblock %}
+
+{% block content %}
+<style>
+    .client-modal-wrap {
+        min-height: calc(100vh - 170px);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 10px 0 24px;
+        position: relative;
+    }
+
+    .client-modal-wrap::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            radial-gradient(circle at top, rgba(59, 130, 246, 0.14), transparent 28%),
+            radial-gradient(circle at bottom right, rgba(16, 185, 129, 0.08), transparent 24%);
+        pointer-events: none;
+    }
+
+    .client-modal {
+        position: relative;
+        width: min(100%, 860px);
+        border-radius: 22px;
+        overflow: hidden;
+        background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        box-shadow: 0 28px 80px rgba(2, 6, 23, 0.45);
+    }
+
+    .client-modal-header {
+        padding: 22px 24px;
+        border-bottom: 1px solid rgba(51, 65, 85, 0.8);
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .client-modal-kicker {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .client-modal-title {
+        font-size: clamp(24px, 2.4vw, 34px);
+        font-weight: 800;
+        line-height: 1.15;
+        margin-bottom: 6px;
+    }
+
+    .client-modal-subtitle {
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.5;
+    }
+
+    .client-modal-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 14px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.72);
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .client-modal-body {
+        padding: 24px;
+    }
+
+    .client-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .client-form-grid .form-group {
+        margin-bottom: 0;
+    }
+
+    .client-form-grid .span-2 {
+        grid-column: 1 / -1;
+    }
+
+    .client-form-grid label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--foreground);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+
+    .client-form-grid input,
+    .client-form-grid select,
+    .client-form-grid textarea {
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px solid rgba(51, 65, 85, 0.9);
+        background: rgba(15, 23, 42, 0.76);
+        color: var(--foreground);
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .client-form-grid textarea {
+        min-height: 110px;
+        resize: vertical;
+    }
+
+    .client-form-grid input:focus,
+    .client-form-grid select:focus,
+    .client-form-grid textarea:focus {
+        border-color: rgba(96, 165, 250, 0.8);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        background: rgba(15, 23, 42, 0.9);
+    }
+
+    .client-form-footer {
+        margin-top: 22px;
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+
+    .client-form-footer .btn {
+        border-radius: 999px;
+        padding: 11px 18px;
+    }
+
+    .client-form-footer .btn-cancel {
+        background: rgba(15, 23, 42, 0.72);
+        color: var(--foreground);
+        border: 1px solid rgba(51, 65, 85, 0.9);
+    }
+
+    .client-form-footer .btn-cancel:hover {
+        background: rgba(30, 41, 59, 0.95);
+    }
+
+    .error-banner {
+        background: rgba(239, 68, 68, 0.1);
+        color: #fca5a5;
+        padding: 12px 14px;
+        border-radius: 14px;
+        margin-bottom: 18px;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        font-size: 14px;
+    }
+
+    @media (max-width: 760px) {
+        .client-form-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .client-modal-body {
+            padding: 18px;
+        }
+
+        .client-modal-header {
+            padding: 18px;
+        }
+    }
+</style>
+
+<div class="client-modal-wrap">
+    <div class="client-modal">
+        <div class="client-modal-header">
+            <div>
+                <div class="client-modal-kicker">{% if client %}Client Editor{% else %}Client Creator{% endif %}</div>
+                <div class="client-modal-title">{% if client %}Edit Client{% else %}Create Client{% endif %}</div>
+                <div class="client-modal-subtitle">
+                    {% if client %}
+                        Update the client record without leaving the client workspace.
+                    {% else %}
+                        Create a new client record in the same dashboard flow.
+                    {% endif %}
+                </div>
+            </div>
+            {% if client %}
+            <div class="client-modal-chip">Client ID: {{ client.client_id }}</div>
+            {% endif %}
+        </div>
+
+        <div class="client-modal-body">
+            {% if error %}
+            <div class="error-banner">{{ error }}</div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="client-form-grid">
+                    {% if not client %}
+                    <div class="form-group span-2">
+                        <label for="client_id">Client ID *</label>
+                        <input type="text" id="client_id" name="client_id" required placeholder="e.g., C001">
+                    </div>
+                    {% endif %}
+
+                    <div class="form-group">
+                        <label for="name">Full Name *</label>
+                        <input type="text" id="name" name="name" required value="{{ client.name|default:'' }}" placeholder="John Doe">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" required value="{{ client.email|default:'' }}" placeholder="john@email.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone *</label>
+                        <input type="tel" id="phone" name="phone" required value="{{ client.phone|default:'' }}" placeholder="09XXXXXXXXX">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status *</label>
+                        <select id="status" name="status" required>
+                            <option value="">Select Status</option>
+                            <option value="Active" {% if client.status == 'Active' %}selected{% endif %}>Active</option>
+                            <option value="Overdue" {% if client.status == 'Overdue' %}selected{% endif %}>Overdue</option>
+                            <option value="Disconnected" {% if client.status == 'Disconnected' %}selected{% endif %}>Disconnected</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group span-2">
+                        <label for="address">Address *</label>
+                        <textarea id="address" name="address" required placeholder="Street, Barangay, City">{{ client.address|default:'' }}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="plan">Plan *</label>
+                        <input type="text" id="plan" name="plan" required value="{{ client.plan|default:'' }}" placeholder="Premium 100Mbps">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="fee">Monthly Fee *</label>
+                        <input type="number" id="fee" name="fee" required step="0.01" value="{{ client.fee|default:0 }}" placeholder="1299">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="balance">Outstanding Balance</label>
+                        <input type="number" id="balance" name="balance" step="0.01" value="{{ client.balance|default:0 }}" placeholder="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="due_date">Due Date *</label>
+                        <input type="date" id="due_date" name="due_date" required value="{{ client.due_date|date:'Y-m-d'|default:'' }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="joined">Joined Date *</label>
+                        <input type="date" id="joined" name="joined" required value="{{ client.joined|date:'Y-m-d'|default:'' }}">
+                    </div>
+                </div>
+
+                <div class="client-form-footer">
+                    <a href="{% if client %}{% url 'dashboard:client_detail' client.client_id %}{% else %}{% url 'dashboard:clients_list' %}{% endif %}" class="rounded-3xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancel</a>
+                    <button type="submit" class="rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">
+                        {% if client %}Update Client{% else %}Create Client{% endif %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

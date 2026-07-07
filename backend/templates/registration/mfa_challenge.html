@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Verify Sign In - NetConnect ISP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: radial-gradient(circle at top, #1d4ed8 0%, var(--bg) 55%);
+            color: var(--fg);
+        }
+        .wrap {
+            width: 100%;
+            max-width: 560px;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.96);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+        }
+        .hero {
+            padding: 28px 30px 20px;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.7);
+        }
+        .title {
+            font-size: 26px;
+            font-weight: 800;
+            margin: 0 0 8px;
+        }
+        .subtitle {
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .content {
+            padding: 24px 30px 30px;
+        }
+        .notice, .error, .success {
+            padding: 12px 14px;
+            border-radius: 10px;
+            margin-bottom: 14px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .notice {
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #bfdbfe;
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.28);
+            color: #fecaca;
+        }
+        .success {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #bbf7d0;
+        }
+        .factor-grid {
+            display: grid;
+            gap: 14px;
+            margin: 18px 0 22px;
+        }
+        .factor {
+            border: 1px solid rgba(51, 65, 85, 0.9);
+            border-radius: 14px;
+            background: rgba(15, 23, 42, 0.55);
+            padding: 16px;
+        }
+        .factor-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        .factor-head i {
+            color: #60a5fa;
+        }
+        .factor-help {
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .field {
+            width: 100%;
+            border: 1px solid var(--border);
+            background: #0f172a;
+            color: var(--fg);
+            border-radius: 10px;
+            padding: 11px 12px;
+            font-size: 14px;
+        }
+        .field:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+        }
+        .submit {
+            width: 100%;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            font-weight: 700;
+            padding: 13px 16px;
+            cursor: pointer;
+            margin-top: 4px;
+        }
+        .submit:hover {
+            filter: brightness(1.05);
+        }
+        .footer {
+            margin-top: 18px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .footer a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="hero">
+                <div class="title">Verify Sign In</div>
+                <div class="subtitle">
+                    Complete the second step for <strong>{{ pending_username }}</strong>.
+                    Required method: <strong>{{ pending_method|default:"multi-factor verification" }}</strong>
+                </div>
+            </div>
+
+            <div class="content">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="{% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="notice">
+                    Did you log in to this account? Enter the OTP sent to your email to continue.
+                </div>
+
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+
+                    <div class="factor-grid">
+                        {% if requires_otp %}
+                        <div class="factor">
+                            <div class="factor-head">
+                                <i class="fas fa-shield-halved"></i>
+                                <span>One-Time Password</span>
+                            </div>
+                            <div class="factor-help">Enter the 6-digit code sent to your email.</div>
+                            <input class="field" type="text" name="otp_code" maxlength="6" placeholder="123456" autocomplete="one-time-code">
+                            <button type="submit" class="submit" name="resend_otp" value="1" style="margin-top: 10px; background: linear-gradient(135deg, #475569, #334155);">
+                                <i class="fas fa-rotate-right" style="margin-right: 8px;"></i>
+                                Resend OTP
+                            </button>
+                        </div>
+                        {% endif %}
+
+                        {% if requires_facial %}
+                        <div class="factor">
+                            <div class="factor-head">
+                                <i class="fas fa-camera"></i>
+                                <span>Facial Recognition</span>
+                            </div>
+                            <div class="factor-help">Upload a clear selfie or use your device camera. We use this to compare against the enrolled face data.</div>
+                            <input class="field" type="file" name="facial_image" accept="image/*" capture="user">
+                        </div>
+                        {% endif %}
+
+                        {% if requires_fingerprint %}
+                        <div class="factor">
+                            <div class="factor-head">
+                                <i class="fas fa-fingerprint"></i>
+                                <span>Fingerprint</span>
+                            </div>
+                            <div class="factor-help">Use the fingerprint scanner on your linked phone to approve the sign-in.</div>
+                            {% if has_mobile_passkey %}
+                            <div class="notice" style="margin-bottom: 10px;">This phone already has a passkey for this link. Tap Fingerprint to continue.</div>
+                            {% else %}
+                            <div class="notice" style="margin-bottom: 10px;">No passkey is registered on this link yet. Tap Register This Phone once, then use Fingerprint.</div>
+                            {% endif %}
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                                <button type="button" id="phone-fingerprint-scan" class="submit" {% if not has_mobile_passkey %}disabled{% endif %} style="width: auto; margin-top: 0; padding: 11px 14px; flex: 1 1 220px; {% if not has_mobile_passkey %}opacity: 0.55; cursor: not-allowed;{% endif %}">
+                                    <i class="fas fa-fingerprint" style="margin-right: 8px;"></i>
+                                    Fingerprint
+                                </button>
+                                {% if not has_mobile_passkey %}
+                                <button type="button" id="phone-fingerprint-reregister" class="submit" style="width: auto; margin-top: 0; padding: 11px 14px; flex: 1 1 220px; background: linear-gradient(135deg, #10b981, #059669);">
+                                    <i class="fas fa-key" style="margin-right: 8px;"></i>
+                                    Register This Phone
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="factor-help" id="phone-fingerprint-status" style="margin-top: 10px; color: #bfdbfe;">Waiting for fingerprint approval.</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <button class="submit" type="submit" name="mfa_preference" value="">
+                        <i class="fas fa-lock-open" style="margin-right: 8px;"></i>
+                        Verify and Continue
+                    </button>
+                </form>
+
+                <div class="footer">
+                    Not your account? <a href="{% url 'login' %}">Go back to login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function () {
+            const scanButton = document.getElementById('phone-fingerprint-scan');
+            const reregisterButton = document.getElementById('phone-fingerprint-reregister');
+            const status = document.getElementById('phone-fingerprint-status');
+            if (!scanButton || !status) return;
+
+            const beginUrl = "{% url 'dashboard:login-phone-fingerprint-begin' %}";
+            const finishUrl = "{% url 'dashboard:login-phone-fingerprint-finish' %}";
+            const beginReEnrollUrl = "{% url 'dashboard:login-mobile-passkey-reregister-begin' %}";
+            const finishReEnrollUrl = "{% url 'dashboard:login-mobile-passkey-reregister-finish' %}";
+
+            function base64UrlToBuffer(value) {
+                const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+                const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+                const binary = atob(padded);
+                const bytes = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+                return bytes.buffer;
+            }
+
+            function bufferToBase64Url(buffer) {
+                const bytes = new Uint8Array(buffer);
+                let binary = '';
+                bytes.forEach((byte) => binary += String.fromCharCode(byte));
+                return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+            }
+
+            async function postJson(url, body) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+                    },
+                    body: JSON.stringify(body),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                return data;
+            }
+
+            async function reregisterPhoneFingerprint() {
+                if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.create) {
+                    throw new Error('Phone fingerprint registration requires a secure browser.');
+                }
+                status.textContent = 'Starting phone fingerprint re-registration...';
+                const optionsResponse = await fetch(`${beginReEnrollUrl}?rp_id=${encodeURIComponent(window.location.hostname)}&origin=${encodeURIComponent(window.location.origin)}`, { credentials: 'same-origin' });
+                const optionsData = await optionsResponse.json();
+                if (!optionsResponse.ok || !optionsData.success) throw new Error(optionsData.error || 'Unable to start fingerprint registration.');
+
+                const publicKey = optionsData.options;
+                publicKey.challenge = base64UrlToBuffer(publicKey.challenge);
+                publicKey.user.id = base64UrlToBuffer(publicKey.user.id);
+                publicKey.excludeCredentials = (publicKey.excludeCredentials || []).map((item) => ({
+                    ...item,
+                    id: base64UrlToBuffer(item.id),
+                }));
+
+                try {
+                    const credential = await navigator.credentials.create({ publicKey });
+                    const result = await postJson(finishReEnrollUrl, {
+                        credential: {
+                            id: credential.id,
+                            rawId: bufferToBase64Url(credential.rawId),
+                            type: credential.type,
+                            response: {
+                                clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
+                                attestationObject: bufferToBase64Url(credential.response.attestationObject),
+                            },
+                        },
+                    });
+                    status.textContent = result.message || 'Phone fingerprint registered. You can continue sign in.';
+                } catch (error) {
+                    const alreadyExists = /already have a passkey|invalidstate|constraint/i.test((error && error.message) || '');
+                    if (!alreadyExists) throw error;
+
+                    status.textContent = 'This phone already has a passkey for this link. Verifying it now...';
+                    const assertionResponse = await fetch(`${beginUrl}?rp_id=${encodeURIComponent(window.location.hostname)}&origin=${encodeURIComponent(window.location.origin)}`, { credentials: 'same-origin' });
+                    const assertionData = await assertionResponse.json();
+                    if (!assertionResponse.ok || !assertionData.success) {
+                        throw new Error(assertionData.error || 'Unable to verify existing fingerprint.');
+                    }
+
+                    const assertionKey = assertionData.options;
+                    assertionKey.challenge = base64UrlToBuffer(assertionKey.challenge);
+                    assertionKey.allowCredentials = (assertionKey.allowCredentials || []).map((item) => ({
+                        ...item,
+                        id: base64UrlToBuffer(item.id),
+                    }));
+                    const assertion = await navigator.credentials.get({ publicKey: assertionKey });
+                    const result = await postJson(finishUrl, {
+                        credential: {
+                            id: assertion.id,
+                            rawId: bufferToBase64Url(assertion.rawId),
+                            type: assertion.type,
+                            response: {
+                                clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                                authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                                signature: bufferToBase64Url(assertion.response.signature),
+                                userHandle: assertion.response.userHandle ? bufferToBase64Url(assertion.response.userHandle) : '',
+                            },
+                        }
+                    });
+                    status.textContent = result.message || 'Existing phone fingerprint verified. You can continue sign in.';
+                }
+
+                scanButton.disabled = false;
+                scanButton.style.opacity = '1';
+                scanButton.style.cursor = 'pointer';
+                reregisterButton?.classList.add('hidden');
+                const form = document.querySelector('form');
+                if (form) {
+                    setTimeout(() => form.submit(), 500);
+                }
+            }
+
+            scanButton.addEventListener('click', async () => {
+                if (scanButton.disabled) {
+                    status.textContent = 'Please re-register this phone first.';
+                    return;
+                }
+                try {
+                    status.textContent = 'Starting phone fingerprint scan...';
+                    const optionsResponse = await fetch(`${beginUrl}?rp_id=${encodeURIComponent(window.location.hostname)}&origin=${encodeURIComponent(window.location.origin)}`, { credentials: 'same-origin' });
+                    const optionsData = await optionsResponse.json();
+                    if (!optionsResponse.ok || !optionsData.success) throw new Error(optionsData.error || 'Unable to start fingerprint scan.');
+                    if (!window.isSecureContext || !navigator.credentials?.get) throw new Error('Phone fingerprint scanning requires a secure browser.');
+
+                    const publicKey = optionsData.options;
+                    publicKey.challenge = base64UrlToBuffer(publicKey.challenge);
+                    publicKey.allowCredentials = (publicKey.allowCredentials || []).map((item) => ({
+                        ...item,
+                        id: base64UrlToBuffer(item.id),
+                    }));
+
+                    const assertion = await navigator.credentials.get({ publicKey });
+                    const result = await postJson(finishUrl, {
+                        credential: {
+                            id: assertion.id,
+                            rawId: bufferToBase64Url(assertion.rawId),
+                            type: assertion.type,
+                            response: {
+                                clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                                authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                                signature: bufferToBase64Url(assertion.response.signature),
+                                userHandle: assertion.response.userHandle ? bufferToBase64Url(assertion.response.userHandle) : '',
+                            },
+                        }
+                    });
+                    status.textContent = result.message || 'Phone fingerprint approved. You can continue sign in.';
+                    setTimeout(() => {
+                        const form = document.querySelector('form');
+                        if (form) form.submit();
+                    }, 500);
+                } catch (error) {
+                    status.textContent = error.message || 'Fingerprint scan failed.';
+                }
+            });
+
+            reregisterButton?.addEventListener('click', async () => {
+                try {
+                    await reregisterPhoneFingerprint();
+                } catch (error) {
+                    status.textContent = error.message || 'Fingerprint re-registration failed.';
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
+

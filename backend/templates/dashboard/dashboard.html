@@ -1,0 +1,190 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Dashboard - NetConnect ISP{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- SUMMARY CARDS - Only Client Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% for card in summary_cards %}
+            {% if card.label != "Applications" and card.label != "Pending Tickets" and card.label != "Monthly Revenue" and card.label != "Total Revenue" %}
+            <div class="card p-5 flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: {{ card.color_bg }}; color: {{ card.color_text }};">
+                    <i class="{{ card.icon }} text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">{{ card.label }}</p>
+                    <p class="text-2xl font-semibold mt-0.5">{{ card.value }}</p>
+                    {% if card.sub %}<p class="text-xs text-slate-400 mt-0.5">{{ card.sub }}</p>{% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- REVENUE STATS - Monthly & Total Revenue -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for card in summary_cards %}
+            {% if card.label == "Monthly Revenue" or card.label == "Total Revenue" %}
+            <div class="card p-5 flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style="background: {{ card.color_bg }}; color: {{ card.color_text }};">
+                    <i class="{{ card.icon }} text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <p class="text-xs text-slate-400 font-medium uppercase tracking-wide">{{ card.label }}</p>
+                    <p class="text-2xl font-semibold mt-0.5">{{ card.value }}</p>
+                    {% if card.sub %}<p class="text-xs text-slate-400 mt-0.5">{{ card.sub }}</p>{% endif %}
+                </div>
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- REVENUE & STATUS - Now Full Width for Revenue -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Revenue Chart - Bigger -->
+        <div class="card p-5">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold">Revenue Analytics</h3>
+                <span class="text-xs text-slate-400 font-mono">Last 6 Months</span>
+            </div>
+            <div class="bg-slate-800 rounded p-4 h-80">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Status Pie -->
+        <div class="card p-5">
+            <h3 class="font-semibold mb-4">Client Status</h3>
+            <div class="bg-slate-800 rounded p-4 h-80 flex items-center justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENT ACTIVITY -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Recent Payments -->
+        <div class="card p-5">
+            <h3 class="font-semibold mb-4">Recent Payments</h3>
+            <div class="space-y-3">
+                {% for payment in recent_payments %}
+                <div class="flex items-center justify-between pb-3 border-b border-slate-700 last:border-0">
+                    <div>
+                        <p class="text-sm font-medium">{{ payment.client }}</p>
+                        <p class="text-xs text-slate-400">{{ payment.date }}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium">₱{{ payment.amount }}</p>
+                        <span class="badge badge-{{ payment.status|lower }}">{{ payment.status }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Pending Tickets -->
+        <div class="card p-5">
+            <h3 class="font-semibold mb-4">Pending Tickets</h3>
+            <div class="space-y-3">
+                {% for ticket in open_tickets %}
+                <div class="flex items-center justify-between pb-3 border-b border-slate-700 last:border-0">
+                    <div>
+                        <p class="text-sm font-medium">{{ ticket.client }}</p>
+                        <p class="text-xs text-slate-400">{{ ticket.category }}</p>
+                    </div>
+                    <span class="badge badge-{{ ticket.priority|lower }}">{{ ticket.priority }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Revenue Line Chart
+    const revenueCtx = document.getElementById('revenueChart');
+    if (revenueCtx) {
+        new Chart(revenueCtx, {
+            type: 'line',
+            data: {
+                labels: {{ revenue_months|safe }},
+                datasets: [{
+                    label: 'Monthly Revenue (₱)',
+                    data: {{ revenue_data|safe }},
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 5,
+                    pointBackgroundColor: '#3b82f6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#cbd5e1' }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    },
+                    x: {
+                        ticks: { color: '#94a3b8' },
+                        grid: { color: 'rgba(148, 163, 184, 0.1)' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Client Status Pie Chart
+    const statusCtx = document.getElementById('statusChart');
+    if (statusCtx) {
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: {{ client_statuses|safe }},
+                datasets: [{
+                    data: {{ client_counts|safe }},
+                    backgroundColor: [
+                        '#10b981',
+                        '#f59e0b',
+                        '#ef4444'
+                    ],
+                    borderColor: '#1e293b',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { 
+                            color: '#cbd5e1',
+                            padding: 15,
+                            font: { size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+});
+</script>
+{% endblock %}
+

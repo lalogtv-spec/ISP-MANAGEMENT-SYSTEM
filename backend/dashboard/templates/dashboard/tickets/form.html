@@ -1,0 +1,117 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{% if ticket %}Edit Ticket{% else %}Create New Ticket{% endif %} - ISP Management System{% endblock %}
+{% block page_title %}{% if ticket %}Edit {{ ticket.ticket_id }}{% else %}Create New Ticket{% endif %}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.45)]">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h1 class="text-3xl font-semibold text-slate-100">{% if ticket %}Edit Ticket{% else %}Create New Ticket{% endif %}</h1>
+                <p class="mt-2 text-sm text-slate-400">Use this form to manage support tickets for your clients.</p>
+            </div>
+            <div class="rounded-3xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm text-slate-200">
+                <div class="font-semibold text-slate-100">Admin Ticket</div>
+                <p class="mt-2 text-xs text-slate-400">Category, priority and scheduling can be managed here.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-sm">
+        {% if error %}
+        <div class="rounded-3xl bg-red-900/10 border border-red-700 p-4 text-sm text-red-100">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form id="ticketForm" method="post" class="space-y-6">
+            {% csrf_token %}
+
+            {% if not ticket %}
+            <div class="grid gap-4">
+                <div class="space-y-2">
+                    <label for="ticket_id" class="block text-sm font-medium text-slate-200">Ticket ID *</label>
+                    <input type="text" id="ticket_id" name="ticket_id" required placeholder="e.g., TKT-2026-001" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label for="client" class="block text-sm font-medium text-slate-200">Client Name *</label>
+                    <input type="text" id="client" name="client" required value="{{ ticket.client|default:'' }}" placeholder="John Doe" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label for="category" class="block text-sm font-medium text-slate-200">Category *</label>
+                    <input type="text" id="category" name="category" required value="{{ ticket.category|default:'' }}" placeholder="e.g., Slow Speed, Billing" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label for="priority" class="block text-sm font-medium text-slate-200">Priority *</label>
+                    <select id="priority" name="priority" required class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                        <option value="">Select Priority</option>
+                        <option value="Low" {% if ticket.priority == 'Low' %}selected{% endif %}>Low</option>
+                        <option value="Medium" {% if ticket.priority == 'Medium' %}selected{% endif %}>Medium</option>
+                        <option value="High" {% if ticket.priority == 'High' %}selected{% endif %}>High</option>
+                        <option value="Critical" {% if ticket.priority == 'Critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="status" class="block text-sm font-medium text-slate-200">Status *</label>
+                    <select id="status" name="status" required class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                        <option value="">Select Status</option>
+                        <option value="Pending" {% if ticket.status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="In Progress" {% if ticket.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                        <option value="Resolved" {% if ticket.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div class="space-y-2">
+                    <label for="created" class="block text-sm font-medium text-slate-200">Created Date *</label>
+                    <input type="date" id="created" name="created" required value="{% if ticket %}{{ ticket.created|date:'Y-m-d' }}{% endif %}" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label for="scheduled" class="block text-sm font-medium text-slate-200">Scheduled Date</label>
+                    <input type="date" id="scheduled" name="scheduled" value="{% if ticket and ticket.scheduled_date %}{{ ticket.scheduled_date|date:'Y-m-d' }}{% endif %}" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label for="assigned" class="block text-sm font-medium text-slate-200">Assigned To</label>
+                    <input type="text" id="assigned" name="assigned" value="{{ ticket.assigned|default:'' }}" placeholder="Unassigned" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label for="description" class="block text-sm font-medium text-slate-200">Description *</label>
+                <textarea id="description" name="description" required placeholder="Describe the issue..." class="min-h-[160px] w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">{{ ticket.description|default:'' }}</textarea>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <a href="{% if ticket %}{% url 'dashboard:ticket_detail' ticket.ticket_id %}{% else %}{% url 'dashboard:tickets' %}{% endif %}" class="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancel</a>
+                <button id="saveTicketBtn" type="submit" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">{% if ticket %}Update Ticket{% else %}Create Ticket{% endif %}</button>
+            </div>
+        </form>
+    </section>
+</div>
+<script>
+    (function(){
+        const form = document.getElementById('ticketForm');
+        const btn = document.getElementById('saveTicketBtn');
+        if (form && btn) {
+            form.addEventListener('submit', function (e) {
+                if (btn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            });
+        }
+    })();
+</script>
+{% endblock %}

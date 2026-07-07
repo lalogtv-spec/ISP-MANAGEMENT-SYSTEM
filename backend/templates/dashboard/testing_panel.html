@@ -1,0 +1,69 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Testing - NetConnect ISP{% endblock %}
+{% block page_title %}Testing{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="card p-5 border border-slate-700 bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950/40">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-[0.24em] text-sky-300 font-semibold">Colab Export</p>
+                <h3 class="mt-1 text-xl font-bold text-white">Generate a training bundle</h3>
+                <p class="mt-2 max-w-3xl text-sm text-slate-300">
+                    Download face images, biometric metadata, payments, and overdue snapshots in one bundle for Colab analysis.
+                </p>
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row">
+                <a href="{% url 'dashboard:export-colab-bundle' %}" class="inline-flex items-center justify-center rounded-xl bg-sky-500 px-4 py-3 text-sm font-bold text-white hover:brightness-110">
+                    Export Colab Bundle
+                </a>
+                <form action="{% url 'dashboard:start-cloudflare-tunnel' %}" method="post" class="inline-flex">
+                    {% csrf_token %}
+                    <button type="submit" class="inline-flex items-center justify-center rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white hover:brightness-110">
+                        New Cloudflare Link
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="mt-5 grid gap-3 md:grid-cols-4">
+            <div class="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tunnel URL</p>
+                <p class="mt-2 text-sm font-semibold text-white break-all">{{ current_tunnel_url|default:"No link yet" }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Stable Hostname</p>
+                <p class="mt-2 text-sm font-semibold text-white break-all">{{ public_hostname|default:"Not set" }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tunnel Name</p>
+                <p class="mt-2 text-sm font-semibold text-white break-all">{{ cloudflared_tunnel_name|default:"Not set" }}</p>
+            </div>
+            <div class="rounded-xl border border-slate-700 bg-slate-950/40 p-4">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tunnel Status</p>
+                <p class="mt-2 text-sm font-semibold {% if tunnel_status_tone == 'ready' %}text-emerald-300{% else %}text-amber-300{% endif %}">
+                    {{ tunnel_status_label }}
+                </p>
+                <p class="mt-2 text-xs leading-5 text-slate-300">{{ tunnel_status_detail }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-5 border border-slate-700 bg-slate-950/40">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Named Tunnel Setup</p>
+                <h3 class="mt-1 text-lg font-semibold text-white">Keep WebAuthn origin stable</h3>
+            </div>
+            <span class="text-xs text-slate-400">Use your own stable hostname for secure login</span>
+        </div>
+        <p class="mt-4 text-sm text-slate-300">Run these once on this machine to keep the WebAuthn origin stable:</p>
+        <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-900 p-4 text-xs leading-6 text-slate-200"><code>cloudflared tunnel login
+cloudflared tunnel create netconnect-dev
+cloudflared tunnel route dns netconnect-dev app.yourdomain.com
+setx PUBLIC_HOSTNAME app.yourdomain.com
+setx CLOUDFLARED_TUNNEL_NAME netconnect-dev</code></pre>
+        <p class="mt-2 text-xs leading-5 text-slate-400">Then restart the app and click New Cloudflare Link. Use your own domain in place of <span class="font-mono text-slate-200">app.yourdomain.com</span>.</p>
+    </div>
+</div>
+{% endblock %}

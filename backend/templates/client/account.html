@@ -1,0 +1,114 @@
+{% extends "client/base.html" %}
+
+{% block title %}Account - NetConnect ISP{% endblock %}
+{% block page_title %}My Account{% endblock %}
+
+{% block content %}
+<div class="space-y-5 sm:space-y-6">
+    <!-- ACCOUNT DETAILS -->
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6">
+        <!-- Main Info -->
+        <div class="xl:col-span-2 card p-4 sm:p-6">
+            <h3 class="font-semibold text-lg mb-6 flex items-center gap-2"><i class="fas fa-user-circle text-blue-400"></i> Account Information</h3>
+            
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">Full Name</p>
+                        <p class="text-base font-medium mt-1">{{ client.name }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">Email</p>
+                        <p class="text-base font-medium mt-1">{{ client.email }}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">Phone</p>
+                        <p class="text-base font-medium mt-1">{{ client.phone }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium uppercase">Member Since</p>
+                        <p class="text-base font-medium mt-1">{{ client.joined }}</p>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-xs text-slate-400 font-medium uppercase">Address</p>
+                    <p class="text-base font-medium mt-1">{{ client.address }}</p>
+                </div>
+
+                <div class="border-t border-slate-700 pt-4">
+                    <p class="text-xs text-slate-400 font-medium uppercase">Plan Details</p>
+                    <p class="text-base font-medium mt-1">{{ client.plan }}</p>
+                    <p class="text-sm text-slate-400 mt-1">₱{{ client.fee }}/month</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Badge -->
+        <div class="card p-4 sm:p-6">
+            <h3 class="font-semibold text-lg mb-6">Account Status</h3>
+            
+            <div class="space-y-4">
+                <div class="p-4 rounded-lg" style="background: {% if client.status == 'Active' %}rgba(16,185,129,0.1){% elif client.status == 'Overdue' %}rgba(245,158,11,0.1){% else %}rgba(239,68,68,0.1){% endif %};">
+                    <p class="text-xs text-slate-400 font-medium uppercase mb-2">Current Status</p>
+                    <span class="badge badge-{{ client.status|lower }} text-sm">{{ client.status }}</span>
+                </div>
+
+                <div class="p-4 bg-slate-800 rounded-lg">
+                    <p class="text-xs text-slate-400 font-medium uppercase mb-2">Monthly Fee</p>
+                    <p class="text-2xl font-semibold">₱{{ client.fee }}</p>
+                </div>
+
+                {% if client.balance %}
+                <div class="p-4 bg-red-600 bg-opacity-10 rounded-lg border border-red-600 border-opacity-20">
+                    <p class="text-xs text-red-400 font-medium uppercase mb-2">Outstanding Balance</p>
+                    <p class="text-2xl font-semibold text-red-400">₱{{ client.balance }}</p>
+                </div>
+                {% else %}
+                <div class="p-4 bg-emerald-600 bg-opacity-10 rounded-lg border border-emerald-600 border-opacity-20">
+                    <p class="text-xs text-emerald-400 font-medium uppercase mb-2">Account Status</p>
+                    <p class="text-lg font-semibold text-emerald-400">No Outstanding Balance</p>
+                </div>
+                {% endif %}
+
+                <button class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-lg text-sm font-medium transition-all">
+                    <i class="fas fa-download mr-2"></i> Download Invoice
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SERVICE DETAILS -->
+    <div class="card p-4 sm:p-6">
+        <h3 class="font-semibold text-lg mb-6 flex items-center gap-2"><i class="fas fa-cog text-purple-400"></i> Service Details</h3>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 font-medium mb-2">Download Speed</p>
+                <p class="text-xl font-semibold">100 Mbps</p>
+                <p class="text-xs text-slate-400 mt-1">Typical</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 font-medium mb-2">Upload Speed</p>
+                <p class="text-xl font-semibold">50 Mbps</p>
+                <p class="text-xs text-slate-400 mt-1">Typical</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 font-medium mb-2">Data Limit</p>
+                <p class="text-xl font-semibold">Unlimited</p>
+                <p class="text-xs text-slate-400 mt-1">Per month</p>
+            </div>
+            <div class="p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 font-medium mb-2">Uptime SLA</p>
+                <p class="text-xl font-semibold">99.5%</p>
+                <p class="text-xs text-slate-400 mt-1">Guaranteed</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+

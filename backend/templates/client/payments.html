@@ -1,0 +1,922 @@
+{% extends "client/base.html" %}
+
+{% block title %}Billing Overview - NetConnect ISP{% endblock %}
+{% block page_title %}Billing Overview{% endblock %}
+
+{% block content %}
+<style>
+    .payments-page-shell {
+        padding-bottom: 1rem;
+    }
+
+    .payment-history-scroll {
+        max-height: 34rem;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #paymentModal {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .payment-modal-panel {
+        max-height: calc(100vh - 2rem);
+    }
+
+    .payment-modal-body {
+        overflow-y: auto;
+        max-height: calc(100vh - 15rem);
+        padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+
+    .payments-page-buffer {
+        height: 0;
+    }
+
+    @media (max-width: 1100px), (hover: none) and (pointer: coarse) {
+        .payments-page-shell {
+            padding-bottom: 0.5rem;
+        }
+
+        .payment-history-scroll {
+            max-height: 48vh;
+        }
+
+        .payments-page-buffer {
+            height: calc(9rem + env(safe-area-inset-bottom));
+        }
+    }
+</style>
+
+<div class="max-w-6xl mx-auto space-y-4 payments-page-shell">
+    <div class="rounded-2xl border border-slate-700 bg-slate-900/80 p-6 shadow-lg shadow-slate-950/20">
+        <p class="text-sm uppercase tracking-[0.2em] text-sky-400 font-semibold mb-2">Billing Overview</p>
+        <h1 class="text-3xl font-bold text-white">Manage your payments and coverage status</h1>
+        <p class="mt-2 text-slate-400">Track verified payments, view your service countdown, and keep your account current.</p>
+    </div>
+    {% if error %}
+    <div class="bg-red-900 border border-red-700 rounded-lg p-4 text-red-100">
+        <p class="font-semibold mb-1">Payment Unavailable</p>
+        <p class="text-sm">{{ error }}</p>
+    </div>
+    {% endif %}
+
+
+
+    <div class="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <h3 class="font-semibold text-white mb-3">Service Coverage Countdown</h3>
+        <p id="service-countdown" class="text-4xl font-bold text-white">Loading countdown...</p>
+        {% if service_end_date %}
+        <p class="text-sm text-slate-300 mt-3">Coverage ends: {{ service_end_date|date:'F j, Y' }}</p>
+        {% endif %}
+    </div>
+
+    <div class="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+                <p class="text-sm uppercase tracking-[0.2em] text-sky-400 font-semibold mb-2">Payment Methods</p>
+                <h2 class="text-2xl font-bold text-white">Payment Management</h2>
+                <p class="mt-2 text-slate-400 max-w-2xl">Add and manage your secure payment methods for future bill payments.</p>
+            </div>
+            <button id="openPaymentModal" type="button" onclick="openPaymentModal()" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-5 rounded-lg transition duration-200 pointer-events-auto">
+                <i class="fas fa-plus mr-2"></i>
+                Add Payment Method
+            </button>
+        </div>
+
+        <div id="paymentMethodsSection" class="rounded-3xl border border-slate-700 bg-slate-900/80 p-8 text-center">
+            <div id="paymentEmptyState" class="space-y-4">
+                <div class="mx-auto flex h-24 w-24 items-center justify-center rounded-3xl bg-slate-800 border border-slate-700 text-sky-400 shadow-lg shadow-slate-950/30">
+                    <i class="fas fa-wallet text-3xl"></i>
+                </div>
+                <div class="space-y-2">
+                    <h3 class="text-xl font-semibold text-white">No payment methods added</h3>
+                    <p class="text-slate-400">Add a payment method to make future bill payments faster and more convenient.</p>
+                </div>
+                <button id="openPaymentModalEmpty" type="button" onclick="openPaymentModal()" class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 px-6 rounded-lg transition duration-200 mx-auto pointer-events-auto">
+                    Add Payment Method
+                </button>
+            </div>
+
+            <div id="paymentMethodsList" class="hidden space-y-4">
+                <div class="flex flex-col gap-4" id="paymentCardsContainer"></div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="text-sm text-slate-400">
+                        <p class="font-semibold text-slate-200">Selected Method</p>
+                        <p id="selectedMethodSummary">Choose a payment method to pay your current bill.</p>
+                    </div>
+                    <button id="payNowButton" type="button" disabled class="inline-flex items-center justify-center bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition duration-200">
+                        Pay Now
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div class="relative flex-1 min-w-0">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input type="text" id="paymentSearch" placeholder="Search payments..." class="w-full bg-slate-800 border border-slate-700 rounded-lg pl-9 pr-3 py-2 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:outline-none">
+        </div>
+        <select id="statusFilter" class="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm w-full sm:w-auto">
+            <option value="">All Status</option>
+            <option value="Paid">Paid</option>
+            <option value="Pending">Pending</option>
+            <option value="Failed">Failed</option>
+        </select>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="table-shell payment-history-scroll">
+            <table class="min-w-[720px] w-full">
+                <thead class="bg-slate-800 bg-opacity-60 border-b border-slate-700">
+                    <tr>
+                        <th class="text-left py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Date</th>
+                        <th class="text-left py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Reference</th>
+                        <th class="text-left py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Method</th>
+                        <th class="text-right py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Amount</th>
+                        <th class="text-center py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Status</th>
+                        <th class="text-center py-4 px-5 text-slate-400 uppercase tracking-[0.2em] text-[11px]">Receipt</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentHistoryBody">
+                    {% for payment in payments %}
+                    <tr class="border-b border-slate-700 hover:bg-slate-900/80 transition-colors duration-150">
+                        <td class="py-4 px-5 text-sm text-slate-300">{{ payment.date }}</td>
+                        <td class="py-4 px-5 text-sm font-mono text-slate-400">
+                            {% if payment.reference %}{{ payment.reference }}{% else %}{{ payment.id }}{% endif %}
+                        </td>
+                        <td class="py-4 px-5 text-sm text-slate-300">{{ payment.method }}</td>
+                        <td class="py-4 px-5 text-right font-semibold text-white">&#8369;{{ payment.amount }}</td>
+                        <td class="py-4 px-5 text-center">
+                            {% if payment.status == 'Verified' %}
+                            <span class="inline-flex items-center rounded-full bg-emerald-500/15 text-emerald-300 px-3 py-1 text-xs font-semibold">Paid</span>
+                            {% elif payment.status == 'Pending' %}
+                            <span class="inline-flex items-center rounded-full bg-amber-500/15 text-amber-300 px-3 py-1 text-xs font-semibold">Pending</span>
+                            {% else %}
+                            <span class="inline-flex items-center rounded-full bg-red-500/15 text-red-300 px-3 py-1 text-xs font-semibold">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-4 px-5 text-center">
+                            {% if payment.status == 'Verified' %}
+                            <button type="button" class="receipt-button inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 transition">Download</button>
+                            {% else %}
+                            <button type="button" class="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/60 px-4 py-2 text-xs font-semibold text-slate-500 cursor-not-allowed">Download</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-slate-400">
+                            <i class="fas fa-wallet text-3xl mb-3 block"></i>
+                            No payment history available yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="payments-page-buffer lg:hidden" aria-hidden="true"></div>
+</div>
+
+<div id="paymentModal" class="fixed inset-0 z-50 hidden flex items-start justify-center overflow-y-auto bg-slate-950/70 px-4 py-6 backdrop-blur-sm sm:items-center">
+    <div class="w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-700 bg-slate-900 shadow-2xl shadow-slate-950/60 payment-modal-panel modal-page-bumper">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-700 px-6 py-5">
+            <div>
+                <h3 class="text-xl font-semibold text-white">Add payment method</h3>
+                <p class="text-sm text-slate-400">Select a payment method and enter the secure details.</p>
+            </div>
+            <button id="closePaymentModal" class="text-slate-400 hover:text-white transition"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="px-6 py-6 space-y-6 payment-modal-body">
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <button type="button" data-method="gcash" class="method-option rounded-3xl border border-slate-700 bg-slate-800 px-4 py-4 text-sm font-semibold text-slate-200 transition hover:border-blue-500">GCash</button>
+                <button type="button" data-method="visa" class="method-option rounded-3xl border border-slate-700 bg-slate-800 px-4 py-4 text-sm font-semibold text-slate-200 transition hover:border-blue-500">Visa</button>
+                <button type="button" data-method="mastercard" class="method-option rounded-3xl border border-slate-700 bg-slate-800 px-4 py-4 text-sm font-semibold text-slate-200 transition hover:border-blue-500">Mastercard</button>
+                <button type="button" data-method="bank" class="method-option rounded-3xl border border-slate-700 bg-slate-800 px-4 py-4 text-sm font-semibold text-slate-200 transition hover:border-blue-500">Bank Transfer</button>
+            </div>
+
+            <div id="methodFormContainer" class="space-y-6">
+                <div class="rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                    <div class="mb-4 rounded-3xl bg-slate-900 p-4 text-slate-300">
+                        <div class="flex items-center justify-between gap-4">
+                            <div>
+                                <p class="text-xs uppercase tracking-[0.3em] text-slate-500">Selected method</p>
+                                <p id="selectedMethodLabel" class="mt-2 text-lg font-semibold text-white">GCash</p>
+                            </div>
+                            <div id="selectedMethodLogo" class="rounded-2xl bg-slate-800 px-4 py-3 text-sky-400 font-bold">GC</div>
+                        </div>
+                    </div>
+
+                    <div id="gcashForm" class="space-y-4 hidden">
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Registered Mobile Number</label>
+                            <input id="gcashMobile" type="text" placeholder="09XX XXX XXXX" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Account Name</label>
+                            <input id="gcashName" type="text" placeholder="Juan Dela Cruz" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <button id="sendVerification" type="button" class="w-full rounded-2xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Send Verification Code</button>
+                            <input id="gcashOtp" type="text" placeholder="OTP Code" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input id="gcashDefault" type="checkbox" class="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-400" />
+                            <label for="gcashDefault" class="text-sm text-slate-300">Save as Default Payment Method</label>
+                        </div>
+                    </div>
+
+                    <div id="cardForm" class="space-y-4 hidden">
+                        <div class="rounded-3xl border border-slate-700 bg-slate-900 p-4">
+                            <div class="flex items-center justify-between text-slate-300 mb-4">
+                                <span class="text-xs uppercase tracking-[0.3em]">Card Preview</span>
+                                <span id="cardBrandLabel" class="text-sm font-semibold text-white">Visa</span>
+                            </div>
+                            <div class="space-y-4">
+                                <div class="text-sm text-slate-400">**** **** **** <span id="cardPreviewNumber">0000</span></div>
+                                <div class="flex items-center justify-between text-sm text-slate-400">
+                                    <span id="cardPreviewName">CARDHOLDER NAME</span>
+                                    <span id="cardPreviewExpiry">MM/YY</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Card Number</label>
+                            <input id="cardNumber" type="text" placeholder="1234 5678 9012 3456" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Cardholder Name</label>
+                            <input id="cardName" type="text" placeholder="Juan Dela Cruz" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-sm text-slate-300 mb-2 block">Expiration Date</label>
+                                <input id="cardExpiry" type="text" placeholder="MM/YY" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                            </div>
+                            <div>
+                                <label class="text-sm text-slate-300 mb-2 block">CVV</label>
+                                <input id="cardCvv" type="text" placeholder="123" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input id="cardDefault" type="checkbox" class="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-400" />
+                            <label for="cardDefault" class="text-sm text-slate-300">Save as Default Payment Method</label>
+                        </div>
+                    </div>
+
+                    <div id="bankForm" class="space-y-4 hidden">
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Bank</label>
+                            <select id="bankName" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none">
+                                <option value="">Choose bank</option>
+                                <option>BDO</option>
+                                <option>BPI</option>
+                                <option>Metrobank</option>
+                                <option>Security Bank</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Account Name</label>
+                            <input id="bankAccountName" type="text" placeholder="Juan Dela Cruz" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-300 mb-2 block">Account Number</label>
+                            <input id="bankAccountNumber" type="text" placeholder="1234567890" class="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-sm text-white focus:border-blue-500 outline-none" />
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <input id="bankDefault" type="checkbox" class="h-4 w-4 rounded border-slate-700 bg-slate-800 text-blue-500 focus:ring-blue-400" />
+                            <label for="bankDefault" class="text-sm text-slate-300">Save as Default Payment Method</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button id="cancelPaymentMethod" type="button" class="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-blue-500 transition">Cancel</button>
+                    <button id="savePaymentMethod" type="button" class="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Save Payment Method</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="payConfirmModal" class="fixed inset-0 z-50 hidden flex items-start sm:items-center justify-center overflow-y-auto bg-slate-950/70 px-4 pt-6 pb-8 sm:py-6 backdrop-blur-sm">
+    <div class="w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-700 bg-slate-900 shadow-2xl shadow-slate-950/60 modal-page-bumper">
+        <div class="flex items-center justify-between gap-4 border-b border-slate-700 px-6 py-5">
+            <div>
+                <h3 class="text-xl font-semibold text-white">Confirm payment</h3>
+                <p class="text-sm text-slate-400">Review payment details before submitting.</p>
+            </div>
+            <button id="closePayConfirm" class="text-slate-400 hover:text-white transition"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="px-6 py-6 space-y-5 modal-page-bumper">
+            <div class="grid gap-4 md:grid-cols-2">
+                <div class="rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                    <p class="text-sm text-slate-400 uppercase tracking-[0.2em]">Amount Due</p>
+                    <p id="confirmAmountDue" class="mt-3 text-3xl font-semibold text-white">&#8369;{{ pending_amount }}</p>
+                </div>
+                <div class="rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                    <p class="text-sm text-slate-400 uppercase tracking-[0.2em]">Billing Period</p>
+                    <p id="confirmBillingPeriod" class="mt-3 text-base font-semibold text-white">{{ service_end_date|date:'F Y' }}</p>
+                </div>
+            </div>
+            <div class="rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                <p class="text-sm text-slate-400 uppercase tracking-[0.2em]">Selected payment method</p>
+                <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p id="confirmMethodName" class="text-lg font-semibold text-white">No method selected</p>
+                        <p id="confirmMethodDetail" class="text-sm text-slate-400">Select a payment method first.</p>
+                    </div>
+                    <span id="confirmMethodBadge" class="inline-flex items-center rounded-full bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-300">Pending</span>
+                </div>
+            </div>
+            <div class="rounded-3xl border border-slate-700 bg-slate-950/70 p-5">
+                <p class="text-sm text-slate-400 uppercase tracking-[0.2em]">Transaction reference</p>
+                <p id="confirmReference" class="mt-3 font-mono text-slate-200">REF-XXXX-XXXX</p>
+            </div>
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button id="cancelPayConfirm" type="button" class="rounded-2xl border border-slate-700 bg-slate-800 px-5 py-3 text-sm font-semibold text-slate-200 hover:border-blue-500 transition">Cancel</button>
+                <button id="confirmPayNow" type="button" class="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500 transition">Confirm Payment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden Payment Processing Form -->
+<form id="paymentProcessForm" method="POST" action="{% url 'dashboard:process-payment' %}" style="display: none;">
+    {% csrf_token %}
+    <input type="hidden" name="payment_type" id="hiddenPaymentType" value="current">
+    <input type="hidden" name="amount" id="hiddenAmount" value="0">
+    <input type="hidden" name="months" id="hiddenMonths" value="1">
+    <input type="hidden" name="method" id="hiddenMethod" value="GCash">
+</form>
+
+</div>
+
+<script>
+const paymentMethods = [];
+let selectedPaymentMethodId = null;
+let selectedMethodType = 'gcash';
+const paymentMethodsStorageKey = 'isp_client_payment_methods';
+let editingPaymentMethodId = null; // null when creating new, holds method id when editing
+
+function formatMaskedNumber(value) {
+    return value.replace(/\D/g, '').slice(-4).padStart(4, '*');
+}
+
+function savePaymentMethodsToStorage() {
+    try {
+        const stored = {
+            methods: paymentMethods,
+            selected: selectedPaymentMethodId,
+        };
+        localStorage.setItem(paymentMethodsStorageKey, JSON.stringify(stored));
+    } catch (e) {
+        console.warn('Unable to save payment methods:', e);
+    }
+}
+
+function loadPaymentMethodsFromStorage() {
+    try {
+        // Try server first
+        console.log('Loading payment methods from server...');
+        return fetch('{% url "dashboard:client-payment-methods" %}', { credentials: 'same-origin' })
+                .then(resp => {
+                    console.log('Server response for payment methods:', resp.status, resp.headers.get('content-type'));
+                    if (!resp.ok) throw new Error('no-server');
+                    return resp.json();
+                })
+                .then(data => {
+                    console.log('Server payment methods payload:', data);
+                    if (data && Array.isArray(data.methods)) {
+                        paymentMethods.length = 0;
+                        data.methods.forEach(item => paymentMethods.push({
+                            id: item.id,
+                            displayName: item.displayName,
+                            detail: item.detail,
+                            brand: item.brand,
+                            verified: item.verified,
+                            default: item.default,
+                        }));
+                        selectedPaymentMethodId = paymentMethods[0]?.id || null;
+                        renderPaymentMethods();
+                    }
+                })
+                .catch(err => {
+                    console.warn('Server payment methods load failed, falling back to localStorage:', err);
+                    // Fallback to localStorage
+                    const stored = localStorage.getItem(paymentMethodsStorageKey);
+                    if (!stored) return;
+                    const parsed = JSON.parse(stored);
+                    if (!parsed || !Array.isArray(parsed.methods)) return;
+                    paymentMethods.length = 0;
+                    parsed.methods.forEach(item => paymentMethods.push(item));
+                    selectedPaymentMethodId = parsed.selected || paymentMethods[0]?.id || null;
+                });
+    } catch (e) {
+        console.warn('Unable to load payment methods:', e);
+    }
+}
+
+function generateReference() {
+    return `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+}
+
+function setActiveMethodOption(method) {
+    selectedMethodType = method;
+    document.querySelectorAll('.method-option').forEach(btn => {
+        btn.classList.toggle('border-blue-500', btn.dataset.method === method);
+        btn.classList.toggle('border-slate-700', btn.dataset.method !== method);
+    });
+    document.getElementById('selectedMethodLabel').textContent = method === 'gcash' ? 'GCash' : method === 'visa' ? 'Visa' : method === 'mastercard' ? 'Mastercard' : 'Bank Transfer';
+    document.getElementById('selectedMethodLogo').textContent = method === 'gcash' ? 'GC' : method === 'visa' ? 'VI' : method === 'mastercard' ? 'MC' : 'BT';
+    document.getElementById('gcashForm').classList.toggle('hidden', method !== 'gcash');
+    document.getElementById('cardForm').classList.toggle('hidden', method !== 'visa' && method !== 'mastercard');
+    document.getElementById('bankForm').classList.toggle('hidden', method !== 'bank');
+    document.getElementById('cardBrandLabel').textContent = method === 'visa' ? 'Visa' : method === 'mastercard' ? 'Mastercard' : 'Card';
+}
+
+function resetPaymentModal() {
+    setActiveMethodOption('gcash');
+    document.getElementById('gcashMobile').value = '';
+    document.getElementById('gcashName').value = '';
+    document.getElementById('gcashOtp').value = '';
+    document.getElementById('gcashDefault').checked = true;
+    document.getElementById('cardNumber').value = '';
+    document.getElementById('cardName').value = '';
+    document.getElementById('cardExpiry').value = '';
+    document.getElementById('cardCvv').value = '';
+    document.getElementById('cardDefault').checked = false;
+    document.getElementById('bankName').value = '';
+    document.getElementById('bankAccountName').value = '';
+    document.getElementById('bankAccountNumber').value = '';
+    document.getElementById('bankDefault').checked = false;
+    updateCardPreview();
+    editingPaymentMethodId = null;
+}
+
+function openPaymentModal() {
+    resetPaymentModal();
+    document.getElementById('paymentModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function getPayNowAmount() {
+    const pendingAmount = parseFloat({{ pending_amount|default:0 }});
+    const planFee = parseFloat({{ client.fee|default:499.00|floatformat:"2" }});
+    return (!isNaN(pendingAmount) && pendingAmount > 0) ? pendingAmount : planFee;
+}
+
+function openPayConfirmModal() {
+    if (paymentMethods.length === 0) {
+        return;
+    }
+    if (!selectedPaymentMethodId) {
+        selectedPaymentMethodId = paymentMethods[0].id;
+    }
+    const method = paymentMethods.find(item => item.id === selectedPaymentMethodId);
+    if (!method) return;
+    const amountDue = getPayNowAmount();
+    document.getElementById('confirmAmountDue').textContent = `₱${amountDue.toFixed(2)}`;
+    document.getElementById('confirmBillingPeriod').textContent = '{{ service_end_date|date:"F Y" }}';
+    document.getElementById('confirmMethodName').textContent = method.displayName;
+    document.getElementById('confirmMethodDetail').textContent = method.detail;
+    document.getElementById('confirmReference').textContent = generateReference();
+    document.getElementById('confirmMethodBadge').textContent = method.default ? 'Default' : 'Selected';
+    document.getElementById('payConfirmModal').classList.remove('hidden');
+}
+
+function closePayConfirmModal() {
+    document.getElementById('payConfirmModal').classList.add('hidden');
+}
+
+function savePaymentMethod() {
+    const id = `method-${Date.now()}`;
+    const defaultChecked = document.querySelector(`#${selectedMethodType}Default` )?.checked;
+    let method = {
+        id,
+        type: selectedMethodType,
+        default: defaultChecked,
+        verified: selectedMethodType === 'gcash',
+        displayName: '',
+        detail: '',
+        brand: '',
+    };
+
+    if (selectedMethodType === 'gcash') {
+        const mobile = document.getElementById('gcashMobile').value.trim();
+        const name = document.getElementById('gcashName').value.trim();
+        const otp = document.getElementById('gcashOtp').value.trim();
+        if (!/^09\d{2}\s?\d{3}\s?\d{4}$/.test(mobile) || !name || !otp) {
+            alert('Please enter valid GCash details and OTP code.');
+            return;
+        }
+        method.displayName = 'GCash';
+        method.detail = mobile;
+        method.brand = 'GCash';
+    } else if (selectedMethodType === 'visa' || selectedMethodType === 'mastercard') {
+        const number = document.getElementById('cardNumber').value.replace(/\s+/g, '');
+        const name = document.getElementById('cardName').value.trim();
+        const expiry = document.getElementById('cardExpiry').value.trim();
+        const cvv = document.getElementById('cardCvv').value.trim();
+        if (!/^\d{16}$/.test(number) || !name || !/^\d{2}\/\d{2}$/.test(expiry) || !/^\d{3,4}$/.test(cvv)) {
+            alert('Please provide valid card information.');
+            return;
+        }
+        method.displayName = selectedMethodType === 'visa' ? 'Visa' : 'Mastercard';
+        method.detail = `•••• ${number.slice(-4)}`;
+        method.brand = selectedMethodType === 'visa' ? 'Visa' : 'Mastercard';
+    } else if (selectedMethodType === 'bank') {
+        const bank = document.getElementById('bankName').value;
+        const name = document.getElementById('bankAccountName').value.trim();
+        const account = document.getElementById('bankAccountNumber').value.trim();
+        if (!bank || !name || !account) {
+            alert('Please provide valid bank account details.');
+            return;
+        }
+        method.displayName = bank;
+        method.detail = `••• ${account.slice(-4)}`;
+        method.brand = 'Bank Transfer';
+    }
+
+    const payNowButton = document.getElementById('payNowButton');
+    // Try to save to server
+    const csrftoken = (function(){
+        const name = 'csrftoken=';
+        const c = document.cookie.split(';').map(s=>s.trim()).find(s=>s.startsWith(name));
+        return c ? c.substring(name.length) : '';
+    })();
+
+    console.log('Attempting to save payment method', method, 'editingId=', editingPaymentMethodId);
+
+    const isEditing = !!editingPaymentMethodId;
+    const isServerId = isEditing && /^[0-9a-fA-F-]{36}$/.test(editingPaymentMethodId);
+
+    function finalizeLocalSave(savedMethod) {
+        if (savedMethod.default) paymentMethods.forEach(item => item.default = false);
+        const existingIndex = paymentMethods.findIndex(item => item.id === savedMethod.id);
+        if (existingIndex !== -1) {
+            paymentMethods[existingIndex] = savedMethod;
+        } else {
+            paymentMethods.push(savedMethod);
+        }
+        selectedPaymentMethodId = savedMethod.id;
+        renderPaymentMethods();
+        if (payNowButton) payNowButton.disabled = false;
+        closePaymentModal();
+        savePaymentMethodsToStorage();
+        editingPaymentMethodId = null;
+    }
+
+    if (isEditing) {
+        if (isServerId) {
+            // PUT to server
+            fetch(`/client/api/payment-methods/${editingPaymentMethodId}/`, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFTOKEN': csrftoken,
+                },
+                body: JSON.stringify({
+                    displayName: method.displayName,
+                    detail: method.detail,
+                    brand: method.brand,
+                    verified: method.verified,
+                    default: method.default,
+                })
+            }).then(resp => {
+                console.log('Server edit response status:', resp.status);
+                if (!resp.ok) throw new Error('server-edit-failed');
+                return resp.json();
+            }).then(data => {
+                console.log('Server edit returned:', data);
+                const saved = data.method;
+                finalizeLocalSave({ id: saved.id, displayName: saved.displayName, detail: saved.detail, brand: saved.brand, verified: saved.verified, default: saved.default });
+            }).catch(err => {
+                console.warn('Server edit failed, applying local update fallback:', err);
+                // Apply local update
+                const local = { id: editingPaymentMethodId, displayName: method.displayName, detail: method.detail, brand: method.brand, verified: method.verified, default: method.default };
+                finalizeLocalSave(local);
+            });
+        } else {
+            // Editing a local-only method (id like method-...), update in-place
+            const local = { id: editingPaymentMethodId, displayName: method.displayName, detail: method.detail, brand: method.brand, verified: method.verified, default: method.default };
+            finalizeLocalSave(local);
+        }
+    } else {
+        // Create new method (POST)
+        fetch('{% url "dashboard:client-payment-methods" %}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFTOKEN': csrftoken,
+            },
+            body: JSON.stringify({
+                displayName: method.displayName,
+                detail: method.detail,
+                brand: method.brand,
+                verified: method.verified,
+                default: method.default,
+            })
+        }).then(resp => {
+            console.log('Server save response status:', resp.status);
+            if (!resp.ok) throw new Error('server-save-failed');
+            return resp.json();
+        }).then(data => {
+            console.log('Server save returned:', data);
+            const saved = data.method;
+            finalizeLocalSave({ id: saved.id, displayName: saved.displayName, detail: saved.detail, brand: saved.brand, verified: saved.verified, default: saved.default });
+        }).catch(err => {
+            console.warn('Server save failed, using local fallback:', err);
+            // fallback to local-only
+            const local = { id, type: method.type, displayName: method.displayName, detail: method.detail, brand: method.brand, verified: method.verified, default: method.default };
+            finalizeLocalSave(local);
+        });
+    }
+}
+
+function updateCardPreview() {
+    const number = document.getElementById('cardNumber').value.replace(/\D/g, '');
+    const name = document.getElementById('cardName').value.trim() || 'CARDHOLDER NAME';
+    const expiry = document.getElementById('cardExpiry').value.trim() || 'MM/YY';
+    document.getElementById('cardPreviewNumber').textContent = number.slice(-4).padStart(4, '*');
+    document.getElementById('cardPreviewName').textContent = name;
+    document.getElementById('cardPreviewExpiry').textContent = expiry;
+}
+
+function renderPaymentMethods() {
+    const emptyState = document.getElementById('paymentEmptyState');
+    const listState = document.getElementById('paymentMethodsList');
+    const container = document.getElementById('paymentCardsContainer');
+    const payNowButton = document.getElementById('payNowButton');
+    const selectedSummary = document.getElementById('selectedMethodSummary');
+
+    if (paymentMethods.length === 0) {
+        emptyState.classList.remove('hidden');
+        listState.classList.add('hidden');
+        payNowButton.disabled = true;
+        selectedSummary.textContent = 'No payment methods available yet.';
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    listState.classList.remove('hidden');
+    container.innerHTML = '';
+
+    paymentMethods.forEach(method => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.dataset.paymentMethodId = method.id;
+        card.className = `w-full rounded-3xl border p-5 text-left transition ${selectedPaymentMethodId === method.id ? 'border-blue-500 bg-slate-900' : 'border-slate-700 bg-slate-800 hover:border-blue-500'}`;
+        card.innerHTML = `
+            <div class="flex items-start gap-4">
+                <div class="min-w-0 w-full">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-sky-400 text-lg">${method.brand.charAt(0)}</span>
+                        <div class="min-w-0">
+                            <p class="font-semibold text-white truncate">${method.displayName}</p>
+                            <p class="text-sm text-slate-400 truncate">${method.detail}</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="flex flex-wrap items-center gap-2 text-xs font-semibold">
+                            ${method.verified ? '<span class="rounded-full bg-emerald-500/15 text-emerald-300 px-3 py-1">Verified</span>' : ''}
+                            ${method.default ? '<span class="rounded-full bg-blue-500/15 text-blue-300 px-3 py-1">Default</span>' : ''}
+                        </div>
+
+                        <div class="mt-3 flex flex-col sm:flex-row sm:justify-end gap-2">
+                            <button type="button" class="edit-method rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 w-full sm:w-20">Edit</button>
+                            <button type="button" class="delete-method rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-rose-300 hover:bg-slate-800 w-full sm:w-20">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        card.addEventListener('click', () => {
+            selectedPaymentMethodId = method.id;
+            savePaymentMethodsToStorage();
+            renderPaymentMethods();
+        });
+
+        card.querySelector('.edit-method').addEventListener('click', event => {
+            event.stopPropagation();
+            // Populate modal with method values for editing
+            editingPaymentMethodId = method.id;
+            setActiveMethodOption(method.brand && method.brand.toLowerCase().includes('visa') ? 'visa' : method.brand && method.brand.toLowerCase().includes('master') ? 'mastercard' : method.brand === 'Bank Transfer' ? 'bank' : method.brand === 'GCash' ? 'gcash' : 'gcash');
+            // Fill fields depending on type
+            if (method.brand === 'GCash' || method.type === 'gcash') {
+                document.getElementById('gcashMobile').value = method.detail || '';
+                document.getElementById('gcashName').value = method.displayName || '';
+                document.getElementById('gcashDefault').checked = !!method.default;
+            } else if (method.brand === 'Visa' || method.brand === 'Mastercard' || method.type === 'visa' || method.type === 'mastercard') {
+                document.getElementById('cardNumber').value = '';
+                document.getElementById('cardName').value = method.displayName || '';
+                document.getElementById('cardExpiry').value = '';
+                document.getElementById('cardCvv').value = '';
+                document.getElementById('cardDefault').checked = !!method.default;
+            } else if (method.brand === 'Bank Transfer' || method.type === 'bank') {
+                document.getElementById('bankName').value = method.displayName || '';
+                document.getElementById('bankAccountName').value = '';
+                document.getElementById('bankAccountNumber').value = method.detail ? method.detail.replace(/[^0-9]/g,'') : '';
+                document.getElementById('bankDefault').checked = !!method.default;
+            }
+            document.getElementById('paymentModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+        card.querySelector('.delete-method').addEventListener('click', event => {
+            event.stopPropagation();
+            // Try server delete if this looks like a server id (UUID)
+            const isServerId = /^[0-9a-fA-F-]{36}$/.test(method.id);
+            if (isServerId) {
+                const csrftoken = (function(){
+                    const name = 'csrftoken=';
+                    const c = document.cookie.split(';').map(s=>s.trim()).find(s=>s.startsWith(name));
+                    return c ? c.substring(name.length) : '';
+                })();
+                fetch(`/client/api/payment-methods/${method.id}/`, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: { 'X-CSRFTOKEN': csrftoken }
+                }).then(resp => {
+                    // remove locally regardless of server result
+                    const index = paymentMethods.findIndex(item => item.id === method.id);
+                    if (index !== -1) paymentMethods.splice(index, 1);
+                    if (selectedPaymentMethodId === method.id) selectedPaymentMethodId = paymentMethods[0]?.id || null;
+                    renderPaymentMethods();
+                    savePaymentMethodsToStorage();
+                }).catch(() => {
+                    const index = paymentMethods.findIndex(item => item.id === method.id);
+                    if (index !== -1) paymentMethods.splice(index, 1);
+                    if (selectedPaymentMethodId === method.id) selectedPaymentMethodId = paymentMethods[0]?.id || null;
+                    renderPaymentMethods();
+                    savePaymentMethodsToStorage();
+                });
+            } else {
+                const index = paymentMethods.findIndex(item => item.id === method.id);
+                if (index !== -1) paymentMethods.splice(index, 1);
+                if (selectedPaymentMethodId === method.id) selectedPaymentMethodId = paymentMethods[0]?.id || null;
+                renderPaymentMethods();
+                savePaymentMethodsToStorage();
+            }
+        });
+
+        container.appendChild(card);
+    });
+
+    let selected = paymentMethods.find(method => method.id === selectedPaymentMethodId);
+    if (!selected && paymentMethods.length > 0) {
+        selected = paymentMethods[0];
+    }
+    if (selected) {
+        selectedPaymentMethodId = selected.id;
+        selectedSummary.textContent = `${selected.displayName} • ${selected.detail}`;
+        payNowButton.disabled = false;
+    } else {
+        selectedPaymentMethodId = null;
+        payNowButton.disabled = true;
+    }
+}
+
+function updatePaymentFilters() {
+    const search = document.getElementById('paymentSearch').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    document.querySelectorAll('#paymentHistoryBody tr').forEach(row => {
+        const text = row.textContent.toLowerCase();
+        const rowStatus = row.querySelector('td:nth-child(5)')?.textContent.trim();
+        const matchesStatus = !status || rowStatus === status;
+        const matchesSearch = text.includes(search);
+        row.style.display = matchesStatus && matchesSearch ? '' : 'none';
+    });
+}
+
+function downloadReceipt(reference) {
+    const content = `Receipt for ${reference}\nAmount: ₱${{ pending_amount|default:0 }}\nThank you for your payment.`;
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${reference}-receipt.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function updateCountdown() {
+    const countdownEl = document.getElementById('service-countdown');
+    if (!countdownEl) {
+        return;
+    }
+
+    const dueDateString = '{{ service_end_date_iso }}';
+    if (!dueDateString) {
+        countdownEl.textContent = 'Coverage date not available';
+        return;
+    }
+
+    const dueDate = new Date(dueDateString + 'T23:59:59');
+    if (Number.isNaN(dueDate.getTime())) {
+        countdownEl.textContent = 'Coverage date not available';
+        return;
+    }
+
+    const now = new Date();
+    const diff = dueDate - now;
+
+    if (diff <= 0) {
+        countdownEl.textContent = 'Service has expired';
+        return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const minutes = Math.floor((diff / (1000 * 60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+
+    countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+
+function handlePaymentHistoryButtons() {
+    document.querySelectorAll('.receipt-button').forEach(button => {
+        button.addEventListener('click', () => {
+            const reference = button.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+            downloadReceipt(reference);
+        });
+    });
+}
+
+function confirmPayment() {
+    const selected = paymentMethods.find(item => item.id === selectedPaymentMethodId);
+    if (!selected) return;
+    
+    const confirmButton = document.getElementById('confirmPayNow');
+    if (confirmButton.disabled) return; // Prevent multiple submissions
+    confirmButton.disabled = true;
+    confirmButton.textContent = 'Processing...';
+    
+    // Use the hidden form and populate values
+    const form = document.getElementById('paymentProcessForm');
+    document.getElementById('hiddenPaymentType').value = 'current';
+    document.getElementById('hiddenAmount').value = getPayNowAmount();
+    document.getElementById('hiddenMonths').value = '1';
+    
+    // Set payment method based on selected method
+    let methodName = 'GCash';
+    if (selected.brand === 'Visa') {
+        methodName = 'Visa';
+    } else if (selected.brand === 'Mastercard') {
+        methodName = 'Mastercard';
+    } else if (selected.brand === 'Bank Transfer') {
+        methodName = 'Bank Transfer';
+    } else if (selected.brand === 'GCash') {
+        methodName = 'GCash';
+    }
+    document.getElementById('hiddenMethod').value = methodName;
+    
+    form.submit();
+}
+
+async function init() {
+    await loadPaymentMethodsFromStorage();
+    document.getElementById('openPaymentModal').addEventListener('click', openPaymentModal);
+    document.getElementById('openPaymentModalEmpty').addEventListener('click', openPaymentModal);
+    document.getElementById('closePaymentModal').addEventListener('click', closePaymentModal);
+    document.getElementById('paymentMethodsList').addEventListener('click', event => {
+        const card = event.target.closest('[data-payment-method-id]');
+        if (!card) return;
+        const selectedId = card.dataset.paymentMethodId;
+        selectedPaymentMethodId = selectedId;
+        savePaymentMethodsToStorage();
+        renderPaymentMethods();
+    });
+    document.getElementById('cancelPaymentMethod').addEventListener('click', closePaymentModal);
+    document.getElementById('savePaymentMethod').addEventListener('click', savePaymentMethod);
+    document.getElementById('sendVerification').addEventListener('click', () => alert('Verification code sent.'));
+    document.querySelectorAll('.method-option').forEach(btn => btn.addEventListener('click', () => setActiveMethodOption(btn.dataset.method)));
+    document.getElementById('paymentSearch').addEventListener('input', updatePaymentFilters);
+    document.getElementById('statusFilter').addEventListener('change', updatePaymentFilters);
+    document.getElementById('payNowButton').addEventListener('click', openPayConfirmModal);
+    document.getElementById('closePayConfirm').addEventListener('click', closePayConfirmModal);
+    document.getElementById('cancelPayConfirm').addEventListener('click', closePayConfirmModal);
+    document.getElementById('confirmPayNow').addEventListener('click', confirmPayment);
+    ['cardNumber', 'cardName', 'cardExpiry'].forEach(id => {
+        document.getElementById(id).addEventListener('input', updateCardPreview);
+    });
+    setActiveMethodOption('gcash');
+    renderPaymentMethods();
+    handlePaymentHistoryButtons();
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+init();
+</script>
+{% endblock %}

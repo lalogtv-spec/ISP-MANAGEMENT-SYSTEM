@@ -1,0 +1,276 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Email Notification Log - NetConnect ISP{% endblock %}
+
+{% block content %}
+<style>
+    @keyframes glow-pulse {
+        0%, 100% {
+            box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.2), 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        50% {
+            box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.5);
+        }
+    }
+    
+    .email-row-new {
+        animation: glow-pulse 2s ease-in-out infinite;
+        background-color: rgba(59, 130, 246, 0.08) !important;
+    }
+    
+    .new-badge-email {
+        display: inline-block;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+        font-size: 9px;
+        font-weight: bold;
+        padding: 2px 6px;
+        border-radius: 10px;
+        animation: pulse 2s ease-in-out infinite;
+        letter-spacing: 0.5px;
+        margin-left: 6px;
+    }
+</style>
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>📧 Email Notification Log</h2>
+            <p class="text-muted">View and filter all email notifications sent to customers</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'dashboard:notification-dashboard' %}" class="btn btn-primary">
+                📊 Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Total Emails</h6>
+                    <p class="h3">{{ total_emails }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Sent Today</h6>
+                    <p class="h3">{{ sent_today }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Overdue Notices</h6>
+                    <p class="h3">{{ overdue_notices }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">Disconnection Notices</h6>
+                    <p class="h3">{{ disconnection_notices }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter and Search -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">🔍 Filter & Search</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Type</label>
+                    <select name="type" class="form-select" style="background-color: #1e293b; color: #e2e8f0; border-color: #334155;">
+                        <option value="" style="background-color: #1e293b; color: #e2e8f0;">-- All Types --</option>
+                        <option value="First Notice" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_type == 'First Notice' %}selected{% endif %}>First Notice</option>
+                        <option value="Second Notice" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_type == 'Second Notice' %}selected{% endif %}>Second Notice</option>
+                        <option value="Disconnection Warning" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_type == 'Disconnection Warning' %}selected{% endif %}>Disconnection Warning</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" style="background-color: #1e293b; color: #e2e8f0; border-color: #334155;">
+                        <option value="" style="background-color: #1e293b; color: #e2e8f0;">-- All Status --</option>
+                        <option value="Simulated Sent" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_status == 'Simulated Sent' %}selected{% endif %}>Sent</option>
+                        <option value="Pending" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_status == 'Pending' %}selected{% endif %}>Pending</option>
+                        <option value="Failed" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_status == 'Failed' %}selected{% endif %}>Failed</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date</label>
+                    <select name="date" class="form-select" style="background-color: #1e293b; color: #e2e8f0; border-color: #334155;">
+                        <option value="" style="background-color: #1e293b; color: #e2e8f0;">-- All Time --</option>
+                        <option value="today" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_date == 'today' %}selected{% endif %}>Today</option>
+                        <option value="last7days" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_date == 'last7days' %}selected{% endif %}>Last 7 Days</option>
+                        <option value="last30days" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_date == 'last30days' %}selected{% endif %}>Last 30 Days</option>
+                        <option value="last90days" style="background-color: #1e293b; color: #e2e8f0;" {% if filter_date == 'last90days' %}selected{% endif %}>Last 90 Days</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="search" class="form-control" placeholder="Name, Email, Client ID..." value="{{ search_query }}" style="background-color: #1e293b; color: #e2e8f0; border-color: #334155;">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Email Logs Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Email ID</th>
+                        <th>Customer Name</th>
+                        <th>Email Address</th>
+                        <th>Type</th>
+                        <th>Amount Due</th>
+                        <th>Status</th>
+                        <th>Sent At</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="{% if log.is_new %}email-row-new{% endif %}">
+                        <td>
+                            <span class="badge bg-info">{{ log.email_id }}</span>
+                        </td>
+                        <td>
+                            <strong>{{ log.customer_name }}</strong>
+                            {% if log.is_new %}
+                                <span class="new-badge-email">NEW</span>
+                            {% endif %}
+                            <br>
+                            <small class="text-muted">({{ log.client_id }})</small>
+                        </td>
+                        <td>{{ log.email_address }}</td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2">
+                                {% if log.notification_type == 'First Notice' %}
+                                    <span class="badge bg-info">📧 First Notice</span>
+                                    <span class="badge bg-secondary rounded-circle" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">1</span>
+                                {% elif log.notification_type == 'Second Notice' %}
+                                    <span class="badge bg-warning">⚠️ Second Notice</span>
+                                    <span class="badge bg-danger rounded-circle" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">2</span>
+                                {% elif log.notification_type == 'Disconnection Warning' %}
+                                    <span class="badge bg-danger">🔴 Disconnection</span>
+                                    <span class="badge bg-danger rounded-circle" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">3</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">💬 {{ log.notification_type }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            {% if log.amount_due %}
+                                <strong>₱{{ log.amount_due }}</strong>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.status == 'Simulated Sent' %}
+                                <span class="badge bg-success">✓ Sent</span>
+                            {% elif log.status == 'Pending' %}
+                                <span class="badge bg-warning">⏳ Pending</span>
+                            {% else %}
+                                <span class="badge bg-danger">✗ Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ log.sent_at|date:"M d, Y h:i A" }}</small>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-info" data-bs-toggle="modal" data-bs-target="#messageModal{{ forloop.counter }}">
+                                👁️ View
+                            </button>
+                        </td>
+                    </tr>
+
+                    <!-- Email Modal -->
+                    <div class="modal fade" id="messageModal{{ forloop.counter }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">
+                                        Email: {{ log.customer_name }} ({{ log.email_id }})
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="bg-light p-3 rounded">
+                                        <p><strong>To:</strong> {{ log.email_address }}</p>
+                                        <p><strong>Subject:</strong> {{ log.subject }}</p>
+                                        <p><strong>Type:</strong> {{ log.notification_type }}</p>
+                                        <p><strong>Sent:</strong> {{ log.sent_at|date:"M d, Y - h:i:s A" }}</p>
+                                        <hr>
+                                        <p><strong>Message:</strong></p>
+                                        <pre>{{ log.message_content }}</pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <p class="text-muted">No email notifications found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">First</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page|add:'-1' }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Previous</a>
+            </li>
+            {% endif %}
+
+            {% for p in page_numbers %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">{{ p }}</a>
+            </li>
+            {% endfor %}
+
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page|add:'1' }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Next</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ total_pages }}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}{% if filter_date %}&date={{ filter_date }}{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}">Last</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
+    <div class="text-center mt-4 text-muted">
+        <small>Showing {{ logs|length }} of {{ total }} email notifications</small>
+    </div>
+</div>
+{% endblock %}
+

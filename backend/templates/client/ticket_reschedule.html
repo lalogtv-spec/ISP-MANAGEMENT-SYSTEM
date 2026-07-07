@@ -1,0 +1,184 @@
+{% extends "client/base.html" %}
+
+{% block title %}Request Reschedule - Support{% endblock %}
+{% block page_title %}Request Reschedule{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-3xl">
+    <section class="rounded-3xl border border-slate-700 bg-slate-950/95 p-6 shadow-sm">
+        <div class="space-y-3">
+            <h2 class="text-lg font-bold text-slate-100">Request to Reschedule Support Visit</h2>
+            <p class="text-sm text-slate-400">Pick a new date and time for the scheduled visit. We'll notify the technician and admin.</p>
+        </div>
+
+        {% if error %}
+        <div class="mt-4 rounded-2xl border border-red-700 bg-red-900/10 p-3 text-sm text-red-100">{{ error }}</div>
+        {% endif %}
+
+        {% if reschedule_locked %}
+        <div class="mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+            This ticket has already used its one reschedule request. Please contact support if you need another change.
+        </div>
+        <div class="mt-6 flex justify-start">
+            <a href="{% url 'dashboard:client-tickets' %}" class="inline-flex items-center justify-center rounded-3xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Back to Tickets</a>
+        </div>
+        {% else %}
+        <form method="post" id="rescheduleForm" class="mt-6 space-y-4">
+            {% csrf_token %}
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label for="scheduled" class="block text-sm font-medium text-slate-200">New Date</label>
+                    <input type="text" id="scheduled" name="scheduled" required placeholder="Month day" autocomplete="off" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label for="scheduled_time" class="block text-sm font-medium text-slate-200">New Time</label>
+                    <input type="time" id="scheduled_time" name="scheduled_time" required class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label for="reason" class="block text-sm font-medium text-slate-200">Reason (optional)</label>
+                <textarea id="reason" name="reason" rows="4" maxlength="150" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" aria-describedby="reasonHelper"></textarea>
+                <div id="reasonHelper" class="space-y-2 text-center">
+                    <p class="text-xs text-slate-500">Keep the reason short, up to 150 characters.</p>
+                    <p id="reasonCounter" class="font-medium text-emerald-300">0/150 characters</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3 justify-start">
+                <button id="sendRescheduleBtn" type="submit" class="inline-flex items-center justify-center rounded-3xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300">Send Reschedule Request</button>
+                <a href="{% url 'dashboard:client-tickets' %}" class="inline-flex items-center justify-center rounded-3xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancel</a>
+            </div>
+        </form>
+        {% endif %}
+    </section>
+</div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+{% if not reschedule_locked %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const currentYear = new Date().getFullYear();
+    const reasonTextarea = document.getElementById('reason');
+    const reasonCounter = document.getElementById('reasonCounter');
+    const submitBtn = document.getElementById('sendRescheduleBtn');
+    const reasonLimit = 150;
+    const picker = flatpickr('#scheduled', {
+        altInput: true,
+        altFormat: 'M j',
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        maxDate: `${currentYear}-12-31`,
+        allowInput: true,
+    });
+    if (picker.altInput) {
+        picker.altInput.placeholder = 'Month day';
+    }
+
+    function updateReasonCounter() {
+        if (!reasonTextarea) return;
+        const chars = reasonTextarea.value.length;
+        const overBy = Math.max(0, chars - reasonLimit);
+        reasonTextarea.classList.toggle('border-rose-500', overBy > 0);
+        reasonTextarea.classList.toggle('focus:border-rose-500', overBy > 0);
+        reasonTextarea.classList.toggle('focus:border-blue-500', overBy <= 0);
+        reasonTextarea.setAttribute('aria-invalid', overBy > 0 ? 'true' : 'false');
+        if (submitBtn) {
+            submitBtn.disabled = overBy > 0;
+        }
+        if (reasonCounter) {
+            reasonCounter.textContent = overBy > 0 ? `Exceeded by ${overBy} characters` : `${chars}/${reasonLimit} characters`;
+            reasonCounter.classList.toggle('text-rose-400', overBy > 0);
+            reasonCounter.classList.toggle('text-emerald-300', overBy <= 0);
+        }
+    }
+
+    if (reasonTextarea) {
+        reasonTextarea.addEventListener('input', updateReasonCounter);
+        updateReasonCounter();
+    }
+    // Ensure flatpickr visible input is applied to the underlying ISO input before form submit
+    const rescheduleForm = document.querySelector('form[method="post"]');
+    if (rescheduleForm && picker) {
+        rescheduleForm.addEventListener('submit', function(evt) {
+            try {
+                const visible = picker.altInput ? picker.altInput.value : picker.input.value;
+                if (visible) {
+                    picker.setDate(visible, true, 'Y-m-d');
+                }
+            } catch (e) {
+                console.warn('Date normalization failed', e);
+            }
+        });
+    }
+
+    // AJAX submit handler to keep modal UX intact
+    const rescheduleFormEl = document.getElementById('rescheduleForm');
+    function _getCsrfToken() {
+        const el = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (el) return el.value;
+        const m = document.cookie.match(/(^|; )csrftoken=([^;]+)/);
+        return m ? m[2] : '';
+    }
+    if (rescheduleFormEl) {
+        rescheduleFormEl.addEventListener('submit', function(evt) {
+            evt.preventDefault();
+            // gather values
+            const scheduled = document.getElementById('scheduled').value;
+            const scheduled_time = document.getElementById('scheduled_time').value;
+            const reasonVal = document.getElementById('reason').value || '';
+
+            // clear previous inline error
+            let errDiv = document.getElementById('rescheduleError');
+            if (!errDiv) {
+                errDiv = document.createElement('div');
+                errDiv.id = 'rescheduleError';
+                errDiv.className = 'mt-4 rounded-2xl border border-red-700 bg-red-900/10 p-3 text-sm text-red-100';
+                rescheduleFormEl.parentNode.insertBefore(errDiv, rescheduleFormEl);
+            }
+            errDiv.style.display = 'none';
+
+            fetch(window.location.href, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': _getCsrfToken(),
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                    scheduled: scheduled,
+                    scheduled_time: scheduled_time,
+                    reason: reasonVal
+                })
+            })
+            .then(resp => resp.json().then(body => ({status: resp.status, body})))
+            .then(({status, body}) => {
+                if (status >= 400 || body.success === false) {
+                    errDiv.textContent = body.error || body.message || 'Unable to submit reschedule request.';
+                    errDiv.style.display = 'block';
+                    return;
+                }
+                // success: show confirmation then reload tickets list
+                const successDiv = document.createElement('div');
+                successDiv.className = 'mt-4 rounded-2xl border border-emerald-600 bg-emerald-900/10 p-3 text-sm text-emerald-200';
+                successDiv.textContent = body.message || 'Reschedule request submitted.';
+                rescheduleFormEl.parentNode.insertBefore(successDiv, rescheduleFormEl);
+                setTimeout(() => {
+                    if (window.history && window.history.length > 1) {
+                        try { window.history.back(); return; } catch (e) {}
+                    }
+                    window.location.reload();
+                }, 900);
+            })
+            .catch(err => {
+                errDiv.textContent = 'Network error. Try again.';
+                errDiv.style.display = 'block';
+                console.error(err);
+            });
+        });
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

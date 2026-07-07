@@ -1,0 +1,221 @@
+{% extends 'client/base.html' %}
+
+{% block title %}Notification Test Result - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2>✅ Notifications Sent Successfully</h2>
+        </div>
+    </div>
+
+    <!-- Success Alert -->
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>✓ Test notifications have been sent!</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Notification Summary -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📊 Notification Summary</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-3">
+                        <tr>
+                            <td><strong>Notification ID:</strong></td>
+                            <td><span class="badge bg-primary">{{ notification_id }}</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client:</strong></td>
+                            <td>{{ client.client_id }} - {{ client.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Type:</strong></td>
+                            <td>
+                                {% if result.notification_type == 'First Notice' %}
+                                    <span class="badge bg-info">{{ result.notification_type }}</span>
+                                {% elif result.notification_type == 'Second Notice' %}
+                                    <span class="badge bg-warning">{{ result.notification_type }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ result.notification_type }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Days Overdue:</strong></td>
+                            <td>{{ days_overdue }} day(s)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Amount Due:</strong></td>
+                            <td>₱{{ client.balance|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Client Status:</strong></td>
+                            <td>
+                                {% if client.status == 'Active' %}
+                                    <span class="badge bg-success">{{ client.status }}</span>
+                                {% elif client.status == 'Overdue' %}
+                                    <span class="badge bg-warning">{{ client.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ client.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Email Notification -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📧 Email Notification</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>To:</strong> {{ client.email }}<br>
+                        <strong>Subject:</strong> {{ result.template.subject }}
+                    </div>
+                    <div class="mb-3">
+                        <strong>Status:</strong>
+                        {% if result.email.status == 'success' %}
+                            <span class="badge bg-success">✓ Sent</span>
+                        {% else %}
+                            <span class="badge bg-danger">✗ Failed</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Email Preview -->
+                    <div class="alert alert-secondary">
+                        <h6>📄 Email Preview:</h6>
+                        <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem;">{{ result.template.email_preview }}</pre>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted"><strong>Full Email Body:</strong></small>
+                        <div class="bg-light p-3 rounded" style="max-height: 300px; overflow-y: auto; font-size: 0.9rem; white-space: pre-wrap; word-wrap: break-word;">
+{{ result.template.email_preview }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMS Notification -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📱 SMS Notification</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>To:</strong> {{ client.phone }}<br>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Status:</strong>
+                        {% if result.sms.status == 'success' %}
+                            <span class="badge bg-success">✓ Sent</span>
+                        {% else %}
+                            <span class="badge bg-danger">✗ Failed</span>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- SMS Preview -->
+                    <div class="alert alert-secondary">
+                        <h6>💬 SMS Message:</h6>
+                        <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; font-size: 0.95rem;">{{ result.template.sms_preview }}</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline Information -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">⏱️ Grace Period Timeline</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-3 {% if days_overdue <= 2 %}bg-info text-white{% else %}bg-light{% endif %} rounded mb-2">
+                                <strong>Days 1-2</strong>
+                                <br><small>First Notice</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 {% if days_overdue == 3 %}bg-warning text-dark{% else %}bg-light{% endif %} rounded mb-2">
+                                <strong>Day 3</strong>
+                                <br><small>Second Notice</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 {% if days_overdue > 3 %}bg-danger text-white{% else %}bg-light{% endif %} rounded mb-2">
+                                <strong>Day 4+</strong>
+                                <br><small>Disconnection Warning</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-3 {% if days_overdue > 3 %}bg-dark text-white{% else %}bg-light{% endif %} rounded mb-2">
+                                <strong>Disconnected</strong>
+                                <br><small>Service Cut Off</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Database Record -->
+            <div class="card border-secondary mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">💾 Database Record Created</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        <small class="text-muted">
+                            A notification record has been created in the database for tracking and audit purposes.
+                            This can be viewed in the Django admin panel or directly from the database.
+                        </small>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-grid gap-2 mb-4">
+                <a href="{% url 'dashboard:client-payments' %}" class="btn btn-primary btn-lg">
+                    ← Back to Payments
+                </a>
+                <a href="{% url 'test-overdue-notification' %}" class="btn btn-warning btn-lg">
+                    📬 Send Another Test
+                </a>
+            </div>
+
+            <!-- Debug Info -->
+            <div class="alert alert-secondary">
+                <h6>🔍 Debug Information (Mock Mode)</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <small>
+                            <strong>Email Result:</strong><br>
+                            Status: {{ result.email.status }}<br>
+                            Message: {{ result.email.message }}
+                        </small>
+                    </div>
+                    <div class="col-md-6">
+                        <small>
+                            <strong>SMS Result:</strong><br>
+                            Status: {{ result.sms.status }}<br>
+                            Message: {{ result.sms.message }}
+                        </small>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <small class="text-muted">
+                    In mock mode, notifications are logged to the console for development testing.
+                    Check the terminal/console output to see the mock notifications that were "sent".
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

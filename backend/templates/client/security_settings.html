@@ -1,0 +1,1085 @@
+{% extends 'client/base.html' %}
+
+{% block title %}Security & Biometrics - NetConnect ISP{% endblock %}
+{% block page_title %}Security & Biometrics{% endblock %}
+
+{% block content %}
+<style>
+    .mirror-preview {
+        transform: scaleX(-1);
+        transform-origin: center;
+    }
+
+    .face-video-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin-top: 1.5rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .face-video-shell {
+        width: min(100%, 840px);
+        max-width: 840px;
+        aspect-ratio: 4 / 3;
+        min-height: 360px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: rgba(15, 23, 42, 0.98);
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+    }
+
+    .face-video-shell video,
+    .face-video-shell img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        object-position: center center;
+    }
+
+    .face-video-shell::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.12), inset 0 0 0 6px rgba(15, 23, 42, 0.22);
+        pointer-events: none;
+    }
+
+    .floating-face-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 1.25rem;
+        overflow-y: auto;
+        pointer-events: none;
+    }
+
+    .floating-face-modal.visible {
+        display: flex;
+        pointer-events: auto;
+    }
+
+    .floating-face-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.72);
+        backdrop-filter: blur(4px);
+    }
+
+    .floating-face-box {
+        position: relative;
+        z-index: 2;
+        width: min(100%, 840px);
+        max-width: 840px;
+        background: rgba(15, 23, 42, 0.96);
+        border-radius: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        box-shadow: 0 36px 100px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .floating-face-box h3 {
+        color: #f8fafc;
+        margin: 0;
+        font-size: 1.5rem;
+    }
+
+    .floating-face-box p {
+        margin: 0;
+        color: rgba(226, 232, 240, 0.8);
+        font-size: 0.95rem;
+    }
+
+    .floating-face-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: flex-end;
+    }
+
+    .floating-face-actions button {
+        min-width: 120px;
+    }
+
+    .floating-face-status {
+        color: rgba(148, 163, 184, 0.95);
+        font-size: 0.95rem;
+    }
+</style>
+
+<div class="space-y-6">
+    <div class="rounded-2xl border border-slate-700 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-6 shadow-2xl">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-sky-400 font-semibold">Security Dashboard</p>
+                <h1 class="mt-2 text-3xl font-black text-white">Security & Biometrics</h1>
+                <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                    Register fingerprints and phone biometrics with a simple guided workflow. Login biometrics are handled on the login page, while this page keeps OTP and security policy settings in one place.
+                    2-step verification stays optional and can be turned on anytime.
+                </p>
+            </div>
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Fingerprint</p>
+                    <p class="mt-2 text-lg font-bold text-white">{% if fingerprint_data %}Registered{% else %}Not Set{% endif %}</p>
+                    <p class="text-xs text-slate-400">{{ fingerprint_count }} profile{% if fingerprint_count != 1 %}s{% endif %}</p>
+                </div>
+                <div class="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Phone Biometrics</p>
+                    <p class="mt-2 text-lg font-bold text-white" data-phone-biometric-badge>{% if mobile_passkey_data %}Registered{% else %}Not Set{% endif %}</p>
+                    <p class="text-xs text-slate-400">{{ mobile_passkey_count }} linked device{% if mobile_passkey_count != 1 %}s{% endif %}</p>
+                </div>
+                <div class="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Security Level</p>
+                    <p class="mt-2 text-lg font-bold text-white">{{ security_level.label }}</p>
+                    <p class="text-xs text-slate-400">Score {{ security_level.score }}</p>
+                </div>
+                <div class="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3">
+                    <p class="text-xs uppercase tracking-wide text-slate-400">Last Update</p>
+                    <p class="mt-2 text-lg font-bold text-white">{% if last_biometric_update %}{{ last_biometric_update|date:"M d, Y" }}{% else %}None yet{% endif %}</p>
+                    <p class="text-xs text-slate-400">Biometric activity</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="flash-message rounded-xl border px-4 py-3 text-sm {% if message.tags == 'success' %}border-emerald-500/30 bg-emerald-500/10 text-emerald-200{% else %}border-rose-500/30 bg-rose-500/10 text-rose-200{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if error %}
+    <div class="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <div class="grid gap-6 xl:grid-cols-2">
+        <div class="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Fingerprint Registration</h2>
+                    <p class="text-sm text-slate-400">Use the phone fingerprint prompt first. Then enroll and manage your biometric login.</p>
+                </div>
+                <i class="fas fa-fingerprint text-3xl text-sky-400"></i>
+            </div>
+
+            <form method="post" class="mt-6 space-y-4" id="fingerprint-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_fingerprint" id="fingerprint-action">
+                <input type="hidden" name="fingerprint_template_json" id="fingerprint-template-json" value="">
+                <input type="hidden" name="fingerprint_position" id="fingerprint-position" value="index">
+                <input type="hidden" name="fingerprint_verify_json" id="fingerprint-verify-json" value="">
+                <input type="hidden" name="fingerprint_enrollment_mode" id="fingerprint-enrollment-mode" value="create">
+
+                <div id="fingerprint-workflow" class="rounded-2xl border border-slate-700 bg-slate-950/50 p-5 space-y-4">
+                    <div class="inline-flex rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-sky-200">
+                        Fingerprint Enrollment
+                    </div>
+                    <p class="text-sm leading-6 text-slate-200">Tap Register Fingerprint to trigger the real device biometric prompt.</p>
+
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-xs text-slate-400">
+                            <span>Progress</span>
+                            <span id="fingerprint-progress-label">0%</span>
+                        </div>
+                        <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="fingerprint-progress-bar" class="h-full w-0 rounded-full bg-sky-500 transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-700 bg-slate-900/80 p-4">
+                        <p class="text-sm font-semibold text-white">Status</p>
+                        <p id="fingerprint-status" class="mt-2 text-sm leading-6 text-slate-300">Ready to begin fingerprint enrollment.</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" id="fingerprint-register" class="rounded-xl bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:brightness-105">
+                            Register Fingerprint
+                        </button>
+                    </div>
+
+                    <div id="fingerprint-success" class="hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5 space-y-4">
+                        <div class="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
+                            Completion
+                        </div>
+                        <p class="text-lg font-black text-white">Fingerprint Added Successfully ✅</p>
+                        <p class="text-sm leading-6 text-emerald-50">Your fingerprint has been added and is ready to use for authentication.</p>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="button" id="fingerprint-add-another" class="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Add Another Fingerprint</button>
+                            <button type="button" id="fingerprint-done" class="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100 hover:bg-emerald-400/20">Done</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="fingerprint-final-save" class="hidden rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 space-y-4">
+                    <div class="inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
+                        Final Save
+                    </div>
+                    <p class="text-sm leading-6 text-amber-50">For security purposes, please enter your current password to save these biometric settings.</p>
+                    <div>
+                        <label class="block text-sm font-semibold text-white">Current Password</label>
+                        <input type="password" name="current_password" value="{{ security_form_state.current_password|default:'' }}" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" placeholder="Enter your current password">
+                    </div>
+                    <button type="submit" class="rounded-xl bg-amber-400 px-4 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Save Changes</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="rounded-2xl border border-slate-700 bg-slate-900 p-6">
+            <div class="flex items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Face Registration</h2>
+                    <p class="text-sm text-slate-400">Capture your face for facial biometric sign-in and verification. Keep your face centered and eyes level.</p>
+                </div>
+                <i class="fas fa-camera-retro text-3xl text-cyan-400"></i>
+            </div>
+
+            <form method="post" class="mt-6 space-y-4" id="face-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_face">
+                <input type="hidden" name="face_image_data" id="face-image-data" value="">
+
+                <div id="face-workflow" class="rounded-2xl border border-slate-700 bg-slate-950/50 p-5 space-y-4">
+                    <div class="inline-flex rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
+                        Face Registration
+                    </div>
+                    <p class="text-sm leading-6 text-slate-200">Tap Register Face to open the live camera panel and capture your face.</p>
+
+                    <div>
+                        <div class="mb-2 flex items-center justify-between text-xs text-slate-400">
+                            <span>Progress</span>
+                            <span id="face-progress-label">0%</span>
+                        </div>
+                        <div class="h-2 rounded-full bg-slate-800 overflow-hidden">
+                            <div id="face-progress-bar" class="h-full w-0 rounded-full bg-sky-500 transition-all duration-300"></div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-slate-700 bg-slate-900/80 p-4">
+                        <p class="text-sm font-semibold text-white">Status</p>
+                        <p id="face-status" class="mt-2 text-sm leading-6 text-slate-300">Ready to begin face registration.</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3">
+                        <button type="button" id="face-register" class="rounded-xl bg-sky-600 px-4 py-3 text-sm font-bold text-white hover:brightness-105">Register Face</button>
+                    </div>
+
+                    <div id="face-success" class="hidden rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5 space-y-4">
+                        <div class="inline-flex rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
+                            Completion
+                        </div>
+                        <p class="text-lg font-black text-white">Face Registered Successfully ✅</p>
+                        <p class="text-sm leading-6 text-emerald-50">Your face has been captured and is ready for login.</p>
+                        <div class="flex flex-wrap gap-3">
+                            <button type="button" id="face-add-another" class="rounded-xl bg-emerald-400 px-4 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Register Again</button>
+                            <button type="button" id="face-done" class="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm font-bold text-emerald-100 hover:bg-emerald-400/20">Done</button>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="hidden" id="face-image-front" name="face_image_front" value="">
+            </form>
+        </div>
+    </div>
+
+    <div class="rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/30 p-6 shadow-2xl shadow-cyan-950/20">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-xs uppercase tracking-[0.25em] text-cyan-300 font-semibold">Two-Step Verification</p>
+                <h2 class="mt-2 text-2xl font-black text-white">Optional 2-step verification</h2>
+                <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    Keep biometric changes password-only by default. Turn on 2-step verification when you want OTP protection for sign-in and sensitive actions.
+                </p>
+            </div>
+            <div class="rounded-xl border border-cyan-500/20 bg-cyan-500/10 px-4 py-3">
+                <p class="text-xs uppercase tracking-wide text-cyan-200">Status</p>
+                <p class="mt-1 text-lg font-bold text-white">{% if mfa_settings.is_enabled %}Enabled{% else %}Disabled{% endif %}</p>
+            </div>
+        </div>
+
+        <form method="post" id="auth-settings-form" class="mt-5 grid gap-4 md:grid-cols-2">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_auth_settings">
+
+            <label class="rounded-xl border border-slate-700 bg-slate-950/50 p-4 md:col-span-2">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-white">Enable 2-step verification</p>
+                        <p class="text-xs text-slate-400">When on, the system can protect sign-in and sensitive actions with the factors you allow.</p>
+                    </div>
+                    <input type="checkbox" name="enable_mfa" {% if mfa_settings.is_enabled %}checked{% endif %} class="h-5 w-5 accent-cyan-400">
+                </div>
+            </label>
+
+            <label class="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-white">Allow OTP on Login</p>
+                        <p class="text-xs text-slate-400">Let the sign-in flow ask for OTP when fingerprint is not selected.</p>
+                    </div>
+                    <input type="checkbox" name="allow_otp_login" id="allow-otp-login" {% if mfa_settings.allow_otp_login %}checked{% endif %} class="h-4 w-4 accent-cyan-400">
+                </div>
+            </label>
+
+            <label class="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-white">Require on Every Login</p>
+                        <p class="text-xs text-slate-400">Always ask for OTP after password login when enabled.</p>
+                    </div>
+                    <input type="checkbox" name="require_on_every_login" {% if mfa_settings.require_on_every_login %}checked{% endif %} class="h-4 w-4 accent-cyan-400">
+                </div>
+            </label>
+
+            <label class="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-white">Sensitive Actions</p>
+                        <p class="text-xs text-slate-400">Extra verification for account changes.</p>
+                    </div>
+                    <input type="checkbox" name="require_biometric_sensitive" {% if mfa_settings.require_biometric_for_sensitive_actions %}checked{% endif %} class="h-4 w-4 accent-cyan-400">
+                </div>
+            </label>
+
+            <label class="rounded-xl border border-slate-700 bg-slate-950/50 p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-semibold text-white">Risk-based Login</p>
+                        <p class="text-xs text-slate-400">Ask for the second step on suspicious sessions.</p>
+                    </div>
+                    <input type="checkbox" name="require_on_suspicious_login" {% if mfa_settings.require_on_suspicious_login %}checked{% endif %} class="h-4 w-4 accent-cyan-400">
+                </div>
+            </label>
+
+            <div id="auth-final-save" class="hidden rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 md:col-span-2 space-y-4">
+                <div class="inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">
+                    Final Save
+                </div>
+                <p class="text-sm leading-6 text-amber-50">For security purposes, please enter your current password to save these biometric settings.</p>
+                <div>
+                    <label class="block text-sm font-semibold text-white">Current Password</label>
+                    <input type="password" name="current_password" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" placeholder="Enter your current password">
+                </div>
+                <button type="submit" class="rounded-xl bg-amber-400 px-4 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Save Changes</button>
+            </div>
+
+            <button type="button" id="auth-save-trigger" class="rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-sky-500/20 hover:brightness-105 md:col-span-2">
+                Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+
+<div id="face-camera-modal" class="floating-face-modal" aria-hidden="true">
+    <div class="floating-face-backdrop"></div>
+    <div class="floating-face-box modal-page-bumper">
+        <button type="button" id="face-modal-close" class="rounded-full bg-slate-800 text-slate-100 p-3 self-end hover:bg-slate-700">✕</button>
+        <div>
+            <h3>Face Enrollment</h3>
+            <p>Use your webcam to capture a live photo. Keep your face centered and eyes level.</p>
+            <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">
+                <span>Center guide</span>
+            </div>
+        </div>
+        <div class="face-video-shell">
+            <video id="face-video" autoplay muted playsinline class="mirror-preview"></video>
+            <img id="face-preview" class="mirror-preview" alt="Captured face preview" style="display:none;">
+        </div>
+        <div class="floating-face-status" id="face-modal-status">Allow camera access to begin.</div>
+        <div id="face-confirmation" class="hidden rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5 space-y-4">
+            <div class="inline-flex rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100">Confirmation</div>
+            <p class="text-sm leading-6 text-amber-50">We captured your photo. Enter your current password to complete registration.</p>
+            <div>
+                <label class="block text-sm font-semibold text-white">Current Password</label>
+                <input type="password" id="face-current-password" class="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none" placeholder="Enter your current password">
+            </div>
+            <div class="flex flex-wrap gap-3">
+                <button type="button" id="face-confirm-btn" class="rounded-xl bg-amber-400 px-4 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Confirm & Save</button>
+                <button type="button" id="face-cancel-btn" class="rounded-xl border border-slate-700 bg-slate-950/50 px-4 py-3 text-sm font-bold text-slate-100">Cancel</button>
+            </div>
+        </div>
+        <div class="floating-face-actions">
+            <button type="button" id="face-capture" class="rounded-xl bg-amber-400 px-5 py-3 text-sm font-bold text-slate-950 hover:brightness-105">Capture Photo</button>
+            <button type="button" id="face-retake" class="rounded-xl border border-slate-700 bg-slate-950/50 px-5 py-3 text-sm font-bold text-slate-100 hidden">Retake</button>
+            <button type="button" id="face-modal-cancel" class="rounded-xl border border-slate-700 bg-slate-950/50 px-5 py-3 text-sm font-bold text-slate-100">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function initSecurityPage() {
+    // Auto-hide flash messages after a short timeout
+    (function() {
+        const TIMEOUT_MS = 6000;
+        const flashes = Array.from(document.querySelectorAll('.flash-message'));
+        if (!flashes.length) return;
+        setTimeout(() => {
+            flashes.forEach(el => {
+                try {
+                    el.style.transition = 'opacity 400ms ease, transform 400ms ease';
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateY(-8px)';
+                    setTimeout(() => el.remove(), 450);
+                } catch (e) {}
+            });
+        }, TIMEOUT_MS);
+    })();
+    const fingerprintForm = document.getElementById('fingerprint-form');
+    const fingerprintRegister = document.getElementById('fingerprint-register');
+    const fingerprintLinkPhone = document.getElementById('fingerprint-link-phone');
+    const fingerprintStatus = document.getElementById('fingerprint-status');
+    const fingerprintProgressLabel = document.getElementById('fingerprint-progress-label');
+    const fingerprintProgressBar = document.getElementById('fingerprint-progress-bar');
+    const fingerprintTemplate = document.getElementById('fingerprint-template-json');
+    const fingerprintVerify = document.getElementById('fingerprint-verify-json');
+    const fingerprintPosition = document.getElementById('fingerprint-position');
+    const fingerprintEnrollmentMode = document.getElementById('fingerprint-enrollment-mode');
+    const fingerprintSuccess = document.getElementById('fingerprint-success');
+    const phoneBiometricBadge = document.querySelector('[data-phone-biometric-badge]');
+    const fingerprintAddAnother = document.getElementById('fingerprint-add-another');
+    const fingerprintDone = document.getElementById('fingerprint-done');
+    const fingerprintWorkflow = document.getElementById('fingerprint-workflow');
+    const fingerprintFinalSave = document.getElementById('fingerprint-final-save');
+    const authSaveTrigger = document.getElementById('auth-save-trigger');
+    const authFinalSave = document.getElementById('auth-final-save');
+
+    const faceForm = document.getElementById('face-form');
+    const faceVideo = document.getElementById('face-video');
+    const facePreview = document.getElementById('face-preview');
+    const faceCameraModal = document.getElementById('face-camera-modal');
+    const faceVideoModalClose = document.getElementById('face-modal-close');
+    const faceModalCancel = document.getElementById('face-modal-cancel');
+    const faceRetakeButton = document.getElementById('face-retake');
+    const faceCaptureButton = document.getElementById('face-capture');
+    const faceResetButton = document.getElementById('face-reset');
+    const faceStatus = document.getElementById('face-status');
+    const faceModalStatus = document.getElementById('face-modal-status');
+    const faceProgressLabel = document.getElementById('face-progress-label');
+    const faceProgressBar = document.getElementById('face-progress-bar');
+    const faceImageFront = document.getElementById('face-image-front');
+    const faceImageData = document.getElementById('face-image-data');
+
+    const beginEnrollUrl = "{% url 'dashboard:mobile-biometric-enroll-options' %}";
+    const finishEnrollUrl = "{% url 'dashboard:mobile-biometric-enroll-finish' %}";
+
+    let faceCaptureState = 'ready';
+    let fingerprintCaptured = false;
+    let fingerprintRunMode = 'create';
+    let fingerprintTimers = [];
+
+    // Confirmation removed: face registration is single-shot like fingerprint enrollment.
+
+    function base64UrlToBuffer(value) {
+        const normalized = String(value || '').replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+        const binary = atob(padded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        return bytes.buffer;
+    }
+
+    function bufferToBase64Url(buffer) {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    async function postJson(url, body) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+            },
+            body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'Request failed');
+        return data;
+    }
+
+    async function copyText(text, fallbackMessage) {
+        if (!text) return;
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+        const temp = document.createElement('textarea');
+        temp.value = text;
+        temp.setAttribute('readonly', 'readonly');
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+    }
+
+    function setFingerprintStatus(message) {
+        if (fingerprintStatus) fingerprintStatus.textContent = message;
+    }
+
+    function refreshBiometricSummary() {
+        if (!phoneBiometricBadge) return;
+        const currentText = phoneBiometricBadge.textContent || '';
+        phoneBiometricBadge.textContent = currentText.includes('Registered') ? currentText : 'Registered';
+        phoneBiometricBadge.classList.remove('text-slate-100');
+        phoneBiometricBadge.classList.add('text-emerald-300');
+    }
+
+    function setFaceStatus(message) {
+        if (faceStatus) faceStatus.textContent = message;
+        if (faceModalStatus) faceModalStatus.textContent = message;
+    }
+
+    function setFaceProgress(value) {
+        const safeValue = Math.max(0, Math.min(100, value));
+        if (faceProgressLabel) faceProgressLabel.textContent = `${safeValue}%`;
+        if (faceProgressBar) faceProgressBar.style.width = `${safeValue}%`;
+    }
+
+    function resetFaceCapture() {
+        if (faceVideo) {
+            faceVideo.classList.remove('hidden');
+            faceVideo.style.display = 'block';
+        }
+        if (facePreview) {
+            facePreview.src = '';
+            facePreview.classList.add('hidden');
+            facePreview.style.display = 'none';
+        }
+        if (faceRetakeButton) {
+            faceRetakeButton.classList.add('hidden');
+            faceRetakeButton.style.display = 'none';
+        }
+        if (faceImageFront) faceImageFront.value = '';
+        document.getElementById('face-confirmation')?.classList.add('hidden');
+        const pwdField = document.getElementById('face-current-password');
+        if (pwdField) pwdField.value = '';
+        faceCaptureState = 'ready';
+        setFaceStatus('Ready to capture your face.');
+        setFaceProgress(0);
+        if (faceModalStatus) faceModalStatus.textContent = 'Allow camera access to begin.';
+        if (faceVideo && faceVideo.srcObject) {
+            const tracks = faceVideo.srcObject.getTracks();
+            tracks.forEach((track) => track.stop());
+            faceVideo.srcObject = null;
+        }
+        if (faceCaptureButton) faceCaptureButton.textContent = 'Capture Photo';
+        if (faceResetButton) {
+            faceResetButton.disabled = false;
+            faceResetButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    }
+
+    async function openFaceModal() {
+        if (!faceCameraModal) return;
+        faceCameraModal.classList.add('visible');
+        setFaceStatus('Opening capture panel...');
+        setFaceProgress(25);
+        if (faceCaptureButton) faceCaptureButton.textContent = 'Capture Photo';
+        if (faceRetakeButton) faceRetakeButton.classList.add('hidden');
+        if (faceResetButton) {
+            faceResetButton.disabled = false;
+            faceResetButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        document.getElementById('face-confirmation')?.classList.add('hidden');
+        const pwdField = document.getElementById('face-current-password');
+        if (pwdField) pwdField.value = '';
+        faceCaptureState = 'ready';
+    }
+
+    function closeFaceModal() {
+        if (!faceCameraModal) return;
+        faceCameraModal.classList.remove('visible');
+        resetFaceCapture();
+    }
+
+    async function startFaceCamera() {
+        if (!navigator.mediaDevices?.getUserMedia) {
+            setFaceStatus('Camera not available in this browser.');
+            return;
+        }
+        try {
+            setFaceStatus('Preparing your camera...');
+            setFaceProgress(45);
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+            if (faceVideo) {
+                faceVideo.srcObject = stream;
+                await faceVideo.play().catch(() => undefined);
+                setFaceStatus('Camera ready. Position your face and tap Capture.');
+                setFaceProgress(60);
+            }
+        } catch (error) {
+            setFaceStatus('Unable to access the camera. Please allow camera access or try again.');
+            if (faceModalStatus) faceModalStatus.textContent = 'Unable to access the camera. Please allow permission.';
+        }
+    }
+
+    function toDataUrl(file, callback) {
+        const reader = new FileReader();
+        reader.onloadend = () => callback(reader.result);
+        reader.readAsDataURL(file);
+    }
+
+    async function captureFaceImage() {
+        const src = faceVideo || window._face_temp_video;
+        if (!src || !faceImageData || !facePreview) return;
+        const width = src.videoWidth || 640;
+        const height = src.videoHeight || 480;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(src, 0, 0, width, height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.85);
+        faceImageData.value = imageData;
+        facePreview.src = imageData;
+        facePreview.classList.remove('hidden');
+        facePreview.style.display = 'block';
+        if (faceVideo) {
+            faceVideo.classList.add('hidden');
+            faceVideo.style.display = 'none';
+        }
+        if (faceRetakeButton) {
+            faceRetakeButton.classList.remove('hidden');
+            faceRetakeButton.style.display = 'inline-flex';
+        }
+        faceCaptureState = 'captured';
+        setFaceStatus('Captured. Review the photo, then click Confirm & Save or Retake.');
+        faceCaptureButton.textContent = 'Confirm & Save';
+    }
+
+    async function submitFaceEnrollment() {
+        const password = document.getElementById('face-current-password')?.value || '';
+        if (!password) {
+            setFaceStatus('Enter your password before saving.');
+            return;
+        }
+        faceCaptureButton.disabled = true;
+        setFaceStatus('Uploading captured image...');
+        const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        const payload = new FormData();
+        payload.append('face_image_data', faceImageData?.value || '');
+        payload.append('current_password', password);
+        const resp = await fetch('{% url "face-auth-enroll-confirm" %}', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrftoken },
+            body: payload,
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.success) {
+            setFaceStatus('Upload failed: ' + (data.error || resp.statusText));
+            setFaceProgress(60);
+            faceCaptureButton.disabled = false;
+            if (faceResetButton) {
+                faceResetButton.disabled = false;
+                faceResetButton.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            return;
+        }
+        setFaceProgress(100);
+        setFaceStatus('Face registered successfully.');
+        faceCaptureState = 'saved';
+        faceCaptureButton.textContent = 'Register Again';
+        if (faceResetButton) {
+            faceResetButton.disabled = true;
+            faceResetButton.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        document.getElementById('face-confirmation')?.classList.add('hidden');
+        faceCaptureButton.disabled = false;
+    }
+
+    function handleFaceUpload(file) {
+        if (!file || !faceImageFront || !faceImageData) return;
+        toDataUrl(file, (dataUrl) => {
+            faceImageFront.value = dataUrl;
+            faceImageData.value = dataUrl;
+            setFacePreview(dataUrl);
+            setFaceStatus('Face photo loaded. Save enrollment to complete.');
+        });
+    }
+
+    function setFingerprintProgress(value) {
+        const safeValue = Math.max(0, Math.min(100, value));
+        if (fingerprintProgressLabel) fingerprintProgressLabel.textContent = `${safeValue}%`;
+        if (fingerprintProgressBar) fingerprintProgressBar.style.width = `${safeValue}%`;
+    }
+
+    function clearTimers(bucket) {
+        bucket.forEach((timer) => { window.clearTimeout(timer); window.clearInterval(timer); });
+        bucket.length = 0;
+    }
+
+    function buildFingerprintTemplate(stepLabel) {
+        const seed = `${fingerprintRunMode}:${stepLabel}:${Date.now()}`;
+        let hash = 0;
+        for (let i = 0; i < seed.length; i += 1) {
+            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+            hash |= 0;
+        }
+        const minutiae = Array.from({ length: 32 }, (_, index) => {
+            const base = Math.abs(hash + (index * 97));
+            return {
+                x: (base * 31 + index * 17) % 360,
+                y: (base * 17 + index * 29) % 420,
+                angle: ((base * 13 + index * 11) % 360),
+                type: index % 3 === 0 ? 'bifurcation' : 'ridge_ending',
+                confidence: 0.85 + ((index % 5) * 0.02),
+            };
+        });
+        return {
+            fingerprint_name: fingerprintRunMode === 'append' ? 'Additional Fingerprint' : 'Fingerprint 1',
+            minutiae,
+            ridge_count: 24 + (Math.abs(hash) % 8),
+            ridge_characteristics: {
+                average_ridge_width: 0.44,
+                ridge_pattern: fingerprintRunMode === 'append' ? 'additional' : 'primary',
+                ridge_thickness_variation: 0.2,
+            },
+            image_quality: {
+                contrast: 0.92,
+                clarity: 0.94,
+            },
+            progress: 100,
+            step: stepLabel,
+            captured_at: new Date().toISOString(),
+            source: 'ui_workflow',
+            mode: fingerprintRunMode,
+        };
+    }
+
+    function submitFingerprintIfReady() {
+        if (!fingerprintCaptured) {
+            setFingerprintStatus('Please finish fingerprint enrollment first.');
+            return;
+        }
+        fingerprintFinalSave?.classList.remove('hidden');
+        fingerprintFinalSave?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function setFingerprintProgress(value) {
+        const safeValue = Math.max(0, Math.min(100, value));
+        if (fingerprintProgressLabel) fingerprintProgressLabel.textContent = `${safeValue}%`;
+        if (fingerprintProgressBar) fingerprintProgressBar.style.width = `${safeValue}%`;
+    }
+
+    function clearTimers(bucket) {
+        bucket.forEach((timer) => { window.clearTimeout(timer); window.clearInterval(timer); });
+        bucket.length = 0;
+    }
+
+    function buildFingerprintTemplate(stepLabel) {
+        const seed = `${fingerprintRunMode}:${stepLabel}:${Date.now()}`;
+        let hash = 0;
+        for (let i = 0; i < seed.length; i += 1) {
+            hash = ((hash << 5) - hash) + seed.charCodeAt(i);
+            hash |= 0;
+        }
+        const minutiae = Array.from({ length: 32 }, (_, index) => {
+            const base = Math.abs(hash + (index * 97));
+            return {
+                x: (base * 31 + index * 17) % 360,
+                y: (base * 17 + index * 29) % 420,
+                angle: ((base * 13 + index * 11) % 360),
+                type: index % 3 === 0 ? 'bifurcation' : 'ridge_ending',
+                confidence: 0.85 + ((index % 5) * 0.02),
+            };
+        });
+        return {
+            fingerprint_name: fingerprintRunMode === 'append' ? 'Additional Fingerprint' : 'Fingerprint 1',
+            minutiae,
+            ridge_count: 24 + (Math.abs(hash) % 8),
+            ridge_characteristics: {
+                average_ridge_width: 0.44,
+                ridge_pattern: fingerprintRunMode === 'append' ? 'additional' : 'primary',
+                ridge_thickness_variation: 0.2,
+            },
+            image_quality: {
+                contrast: 0.92,
+                clarity: 0.94,
+            },
+            progress: 100,
+            step: stepLabel,
+            captured_at: new Date().toISOString(),
+            source: 'ui_workflow',
+            mode: fingerprintRunMode,
+        };
+    }
+
+    function resetFingerprintWorkflow(mode = 'create') {
+        fingerprintRunMode = mode;
+        fingerprintCaptured = false;
+        clearTimers(fingerprintTimers);
+        fingerprintEnrollmentMode.value = mode;
+        fingerprintTemplate.value = '';
+        fingerprintVerify.value = '';
+        fingerprintPosition.value = 'index';
+        setFingerprintProgress(0);
+        setFingerprintStatus('Place your finger on the sensor.');
+        fingerprintWorkflow?.classList.remove('hidden');
+        fingerprintSuccess?.classList.add('hidden');
+        fingerprintFinalSave?.classList.add('hidden');
+    }
+
+    function runFingerprintWorkflow(mode = 'create') {
+        resetFingerprintWorkflow(mode);
+        const steps = [
+            { pct: 0, msg: 'Place your finger on the sensor.' },
+            { pct: 25, msg: 'Lift and place your finger again.' },
+            { pct: 55, msg: 'Move your finger slightly to capture the edges.' },
+            { pct: 80, msg: 'Capturing fingerprint details...' },
+            { pct: 100, msg: 'Fingerprint Added Successfully ✅' },
+        ];
+        steps.forEach((step, index) => {
+            fingerprintTimers.push(window.setTimeout(() => {
+                setFingerprintProgress(step.pct);
+                setFingerprintStatus(step.msg);
+                if (step.pct === 100) {
+                    fingerprintCaptured = true;
+                    fingerprintTemplate.value = JSON.stringify(buildFingerprintTemplate(step.msg));
+                    fingerprintSuccess?.classList.remove('hidden');
+                }
+            }, index * 900));
+        });
+    }
+
+    function submitFingerprintIfReady() {
+        if (!fingerprintCaptured) {
+            setFingerprintStatus('Please finish fingerprint enrollment first.');
+            return;
+        }
+        fingerprintFinalSave?.classList.remove('hidden');
+        fingerprintFinalSave?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function linkPhoneFingerprint() {
+        if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.create) {
+            throw new Error('Open this page in Chrome, Edge, or Safari over HTTPS. In-app browsers cannot use phone fingerprint.');
+        }
+        setFingerprintStatus('Starting phone fingerprint link...');
+        const optionsResponse = await fetch(`${beginEnrollUrl}?rp_id=${encodeURIComponent(window.location.hostname)}&origin=${encodeURIComponent(window.location.origin)}`, { credentials: 'same-origin' });
+        const optionsData = await optionsResponse.json();
+        if (!optionsResponse.ok || !optionsData.success) {
+            throw new Error(optionsData.error || 'Unable to start fingerprint linking.');
+        }
+        const publicKey = optionsData.options;
+        publicKey.challenge = base64UrlToBuffer(publicKey.challenge);
+        publicKey.user.id = base64UrlToBuffer(publicKey.user.id);
+        publicKey.excludeCredentials = (publicKey.excludeCredentials || []).map((item) => ({
+            ...item,
+            id: base64UrlToBuffer(item.id),
+        }));
+
+        try {
+            const credential = await navigator.credentials.create({ publicKey });
+            const result = await postJson(finishEnrollUrl, {
+                credential: {
+                    id: credential.id,
+                    rawId: bufferToBase64Url(credential.rawId),
+                    type: credential.type,
+                    response: {
+                        clientDataJSON: bufferToBase64Url(credential.response.clientDataJSON),
+                        attestationObject: bufferToBase64Url(credential.response.attestationObject),
+                    },
+                },
+            });
+            setFingerprintProgress(100);
+            setFingerprintStatus('Phone biometric enrolled successfully ✅');
+            fingerprintCaptured = true;
+            fingerprintSuccess?.classList.remove('hidden');
+            fingerprintWorkflow?.classList.remove('hidden');
+            refreshBiometricSummary();
+            return result;
+        } catch (error) {
+            const alreadyExists = /already have a passkey|invalidstate|constraint/i.test((error && error.message) || '');
+            if (!alreadyExists) throw error;
+
+            setFingerprintStatus('This phone already has a passkey for this link. Verifying it now...');
+            const assertionResponse = await fetch(`${beginEnrollUrl}?rp_id=${encodeURIComponent(window.location.hostname)}&origin=${encodeURIComponent(window.location.origin)}`, { credentials: 'same-origin' });
+            const assertionData = await assertionResponse.json();
+            if (!assertionResponse.ok || !assertionData.success) {
+                throw new Error(assertionData.error || 'Unable to verify existing fingerprint.');
+            }
+            const assertionKey = assertionData.options;
+            assertionKey.challenge = base64UrlToBuffer(assertionKey.challenge);
+            assertionKey.allowCredentials = (assertionKey.allowCredentials || []).map((item) => ({
+                ...item,
+                id: base64UrlToBuffer(item.id),
+            }));
+            const assertion = await navigator.credentials.get({ publicKey: assertionKey });
+            const result = await postJson(finishEnrollUrl, {
+                credential: {
+                    id: assertion.id,
+                    rawId: bufferToBase64Url(assertion.rawId),
+                    type: assertion.type,
+                    response: {
+                        clientDataJSON: bufferToBase64Url(assertion.response.clientDataJSON),
+                        authenticatorData: bufferToBase64Url(assertion.response.authenticatorData),
+                        signature: bufferToBase64Url(assertion.response.signature),
+                        userHandle: assertion.response.userHandle ? bufferToBase64Url(assertion.response.userHandle) : '',
+                    },
+                }
+            });
+            setFingerprintProgress(100);
+            setFingerprintStatus('Existing phone biometric verified successfully ✅');
+            fingerprintCaptured = true;
+            fingerprintSuccess?.classList.remove('hidden');
+            fingerprintWorkflow?.classList.remove('hidden');
+            refreshBiometricSummary();
+            return result;
+        }
+    }
+
+    fingerprintRegister?.addEventListener('click', async () => {
+        try {
+            await linkPhoneFingerprint();
+        } catch (error) {
+            setFingerprintStatus(error.message || 'Unable to link phone fingerprint.');
+        }
+    });
+    fingerprintAddAnother?.addEventListener('click', async () => {
+        try {
+            await linkPhoneFingerprint();
+        } catch (error) {
+            setFingerprintStatus(error.message || 'Unable to link phone fingerprint.');
+        }
+    });
+    fingerprintDone?.addEventListener('click', submitFingerprintIfReady);
+    fingerprintLinkPhone?.addEventListener('click', async () => {
+        try {
+            await linkPhoneFingerprint();
+        } catch (error) {
+            setFingerprintStatus(error.message || 'Unable to link phone fingerprint.');
+        }
+    });
+
+    const faceRegister = document.getElementById('face-register');
+    faceRegister?.addEventListener('click', async () => {
+        try {
+            setFaceStatus('Opening camera panel...');
+            await openFaceModal();
+            await startFaceCamera();
+        } catch (err) {
+            setFaceStatus('Unable to open the camera panel. ' + (err.message || 'Please try again.'));
+        }
+    });
+
+    faceCaptureButton?.addEventListener('click', async (event) => {
+        event.preventDefault();
+        if (faceCaptureState === 'ready') {
+            faceCaptureButton.disabled = true;
+            setFaceStatus('Capturing image...');
+            setFaceProgress(80);
+            await captureFaceImage();
+            setFaceProgress(95);
+            faceCaptureButton.disabled = false;
+            return;
+        }
+
+        if (faceCaptureState === 'captured') {
+            const confirmBlock = document.getElementById('face-confirmation');
+            if (confirmBlock) {
+                confirmBlock.classList.remove('hidden');
+            }
+            setFaceStatus('Please enter your password to confirm enrollment.');
+            faceCaptureState = 'confirming';
+            faceCaptureButton.textContent = 'Confirm & Save';
+            return;
+        }
+
+        if (faceCaptureState === 'confirming') {
+            await submitFaceEnrollment();
+            return;
+        }
+
+        if (faceCaptureState === 'saved') {
+            const confirmed = window.confirm('Are you sure you want to register again?');
+            if (!confirmed) return;
+            resetFaceCapture();
+            await startFaceCamera();
+            return;
+        }
+    });
+
+    faceVideoModalClose?.addEventListener('click', (event) => {
+        event.preventDefault();
+        closeFaceModal();
+    });
+    faceModalCancel?.addEventListener('click', (event) => {
+        event.preventDefault();
+        closeFaceModal();
+    });
+    faceRetakeButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        if (!faceVideo || !facePreview) return;
+        facePreview.classList.add('hidden');
+        facePreview.style.display = 'none';
+        faceVideo.classList.remove('hidden');
+        faceVideo.style.display = 'block';
+        faceCaptureState = 'ready';
+        faceCaptureButton.textContent = 'Capture Photo';
+        setFaceStatus('Ready to recapture your face.');
+        if (faceRetakeButton) {
+            faceRetakeButton.classList.add('hidden');
+            faceRetakeButton.style.display = 'none';
+        }
+    });
+
+    const faceConfirmBtn = document.getElementById('face-confirm-btn');
+    const faceCancelBtn = document.getElementById('face-cancel-btn');
+    faceConfirmBtn?.addEventListener('click', async () => {
+        if (faceCaptureState === 'captured') {
+            faceCaptureButton?.click();
+            return;
+        }
+        if (faceCaptureState === 'confirming') {
+            await submitFaceEnrollment();
+            return;
+        }
+    });
+    faceCancelBtn?.addEventListener('click', () => {
+        document.getElementById('face-confirmation')?.classList.add('hidden');
+        faceCaptureState = 'captured';
+        setFaceStatus('Review the photo, then confirm or retake.');
+        if (faceResetButton) {
+            faceResetButton.disabled = false;
+            faceResetButton.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+    });
+
+    authSaveTrigger?.addEventListener('click', () => {
+        authFinalSave?.classList.remove('hidden');
+        authFinalSave?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    resetFingerprintWorkflow('create');
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSecurityPage);
+} else {
+    initSecurityPage();
+}
+</script>
+{% endblock %}
+
+
+

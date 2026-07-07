@@ -1,0 +1,273 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Audit Log - NetConnect ISP{% endblock %}
+{% block page_title %}Audit Log{% endblock %}
+
+{% block content %}
+<style>
+    .activity-type-badge {
+        display: inline-block;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 4px 10px;
+        border-radius: 4px;
+        margin-left: 8px;
+    }
+    
+    .created-badge { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .updated-badge { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .deleted-badge { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+    .status-changed-badge { background: rgba(168, 85, 247, 0.2); color: #e9d5ff; }
+    .payment-badge { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .ticket-badge { background: rgba(251, 191, 36, 0.2); color: #fef08a; }
+    
+    .audit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .audit-table th {
+        background: rgba(30, 41, 59, 0.8);
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 13px;
+        border-bottom: 2px solid rgba(148, 163, 184, 0.2);
+    }
+    
+    .audit-table td {
+        padding: 12px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        font-size: 13px;
+    }
+    
+    .audit-table tr:hover {
+        background: rgba(30, 41, 59, 0.5);
+    }
+    
+    .audit-row-new {
+        background: rgba(59, 130, 246, 0.08) !important;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Filters -->
+    <div class="card p-5 mb-6">
+        <form method="get" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Activity Type</label>
+                <select name="type" class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-100 text-sm">
+                    <option value="">All Types</option>
+                    <option value="client_created" {% if request.GET.type == 'client_created' %}selected{% endif %}>Client Created</option>
+                    <option value="client_edited" {% if request.GET.type == 'client_edited' %}selected{% endif %}>Client Edited</option>
+                    <option value="payment_recorded" {% if request.GET.type == 'payment_recorded' %}selected{% endif %}>Payment Recorded</option>
+                    <option value="application_approved" {% if request.GET.type == 'application_approved' %}selected{% endif %}>Application Approved</option>
+                    <option value="login" {% if request.GET.type == 'login' %}selected{% endif %}>Login</option>
+                    <option value="logout" {% if request.GET.type == 'logout' %}selected{% endif %}>Logout</option>
+                    <option value="otp_request" {% if request.GET.type == 'otp_request' %}selected{% endif %}>OTP Request</option>
+                    <option value="security_event" {% if request.GET.type == 'security_event' %}selected{% endif %}>Security Event</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Entity Type</label>
+                <select name="entity" class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-100 text-sm">
+                    <option value="">All Entities</option>
+                    <option value="Client" {% if request.GET.entity == 'Client' %}selected{% endif %}>Client</option>
+                    <option value="Payment" {% if request.GET.entity == 'Payment' %}selected{% endif %}>Payment</option>
+                    <option value="Ticket" {% if request.GET.entity == 'Ticket' %}selected{% endif %}>Ticket</option>
+                    <option value="Application" {% if request.GET.entity == 'Application' %}selected{% endif %}>Application</option>
+                    <option value="Security" {% if request.GET.entity == 'Security' %}selected{% endif %}>Security</option>
+                    <option value="System" {% if request.GET.entity == 'System' %}selected{% endif %}>System</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-300 mb-2">Search</label>
+                <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search..." class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded text-slate-100 text-sm placeholder-slate-500">
+            </div>
+            
+            <div class="flex items-end gap-2">
+                <button type="submit" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition">
+                    <i class="fas fa-search mr-2"></i>Filter
+                </button>
+                <a href="{% url 'dashboard:audit-log' %}" class="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-100 font-medium rounded transition text-center">
+                    <i class="fas fa-times mr-2"></i>Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Audit Log Table -->
+    <div class="card p-0 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Activity</th>
+                        <th>Entity</th>
+                        <th>Description</th>
+                        <th>User</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in logs %}
+                    <tr class="{% if activity.is_new %}audit-row-new{% endif %}">
+                        <td>
+                            <span class="text-slate-400">
+                                {{ activity.time|date:"M d, Y H:i" }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="activity-type-badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">
+                                {{ activity.activity_label }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="font-medium text-slate-200">{{ activity.entity_type }}</span>
+                        </td>
+                        <td>
+                            <span class="text-slate-300">{{ activity.description }}</span>
+                            {% if activity.status %}
+                                <div class="mt-2">
+                                    <span class="activity-type-badge" style="background: rgba(34, 197, 94, 0.2); color: #86efac;">{{ activity.status|title }}</span>
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="text-slate-400">
+                                {% if activity.performed_by %}
+                                    {{ activity.performed_by }}
+                                {% else %}
+                                    <span class="text-slate-500 italic">System</span>
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            <button type="button" class="inline-flex items-center gap-2 rounded-full bg-slate-600 hover:bg-slate-500 text-slate-100 transition px-3 py-2 text-sm view-detail-btn" title="View details" data-label="Details" data-target-id="details-{{ forloop.counter0 }}">
+                                <i class="fas fa-eye text-sm"></i>
+                                View
+                            </button>
+                            <div id="details-{{ forloop.counter0 }}" class="hidden full-detail">
+                                <strong>Description:</strong> {{ activity.description|escape }}<br>
+                                {% if activity.ip_address %}
+                                    IP: {{ activity.ip_address }}<br>
+                                {% endif %}
+                                {% if activity.entity_id %}
+                                    Entity ID: {{ activity.entity_id }}<br>
+                                {% endif %}
+                                {% if activity.related_user %}
+                                    Related User: {{ activity.related_user }}<br>
+                                {% endif %}
+                                {% if activity.user_agent %}
+                                    User Agent: {{ activity.user_agent|truncatechars:120 }}<br>
+                                {% endif %}
+                                {% if activity.device_info %}
+                                    Device: {{ activity.device_info }}<br>
+                                {% endif %}
+                                {% if activity.session_id %}
+                                    Session: {{ activity.session_id }}<br>
+                                {% endif %}
+                                {% if activity.old_value %}
+                                    Old: {{ activity.old_value|escape }}<br>
+                                {% endif %}
+                                {% if activity.new_value %}
+                                    New: {{ activity.new_value|escape }}<br>
+                                {% endif %}
+                                {% if activity.amount %}
+                                    Amount: ₱{{ activity.amount }}<br>
+                                {% endif %}
+                                {% if activity.error_message %}
+                                    Error: {{ activity.error_message|escape }}<br>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-8">
+                            <p class="text-slate-400">No activities found</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="mt-6 flex items-center justify-center gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page=1{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.entity %}&entity={{ request.GET.entity }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm">
+                <i class="fas fa-chevron-left"></i> First
+            </a>
+            <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.entity %}&entity={{ request.GET.entity }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm">
+                <i class="fas fa-chevron-left"></i> Prev
+            </a>
+        {% endif %}
+        
+        <span class="px-3 py-2 text-slate-300 text-sm">
+            Page <span class="font-bold">{{ page_obj.number }}</span> of <span class="font-bold">{{ page_obj.paginator.num_pages }}</span>
+        </span>
+        
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.entity %}&entity={{ request.GET.entity }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm">
+                Next <i class="fas fa-chevron-right"></i>
+            </a>
+            <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}{% if request.GET.entity %}&entity={{ request.GET.entity }}{% endif %}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}" class="px-3 py-2 rounded bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm">
+                Last <i class="fas fa-chevron-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+<!-- Modal for viewing full details -->
+<div id="detail-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black opacity-50"></div>
+    <div class="bg-slate-800 text-slate-100 rounded-lg p-6 z-10 max-w-3xl w-full mx-4">
+        <div class="flex items-center justify-between mb-4">
+            <h3 id="detail-modal-title" class="text-lg font-semibold">Detail</h3>
+            <button id="detail-modal-close" class="px-3 py-1 bg-slate-700 rounded">Close</button>
+        </div>
+        <pre id="detail-modal-content" class="whitespace-pre-wrap text-sm text-slate-200 max-h-80 overflow-auto"></pre>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function showModal(label, content) {
+        var modal = document.getElementById('detail-modal');
+        document.getElementById('detail-modal-title').textContent = label + ' Detail';
+        document.getElementById('detail-modal-content').textContent = content;
+        modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+        document.getElementById('detail-modal').classList.add('hidden');
+    }
+
+    document.querySelectorAll('.view-detail-btn').forEach(function(btn){
+        btn.addEventListener('click', function(e){
+            var targetId = btn.getAttribute('data-target-id');
+            var label = btn.getAttribute('data-label') || 'Detail';
+            var hidden = document.getElementById(targetId);
+            if (hidden) {
+                showModal(label, hidden.textContent.trim());
+            }
+        });
+    });
+
+    var close = document.getElementById('detail-modal-close');
+    if (close) close.addEventListener('click', closeModal);
+    document.getElementById('detail-modal').addEventListener('click', function(e){
+        if (e.target.id === 'detail-modal') closeModal();
+    });
+});
+</script>
+

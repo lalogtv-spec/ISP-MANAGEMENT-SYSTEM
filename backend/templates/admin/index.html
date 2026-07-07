@@ -1,0 +1,227 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static log %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+    .admin-home {
+        display: grid;
+        gap: 18px;
+    }
+
+    .admin-hero {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 22px 24px;
+        border: 1px solid var(--nc-border);
+        border-radius: 18px;
+        background:
+            radial-gradient(circle at top right, rgba(96, 165, 250, 0.18), transparent 28%),
+            linear-gradient(135deg, rgba(16, 27, 49, 0.96), rgba(11, 18, 33, 0.96));
+        box-shadow: 0 18px 40px rgba(2, 6, 23, 0.24);
+    }
+
+    .admin-hero-copy {
+        min-width: min(100%, 24rem);
+        flex: 1 1 28rem;
+    }
+
+    .admin-hero-kicker {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(96, 165, 250, 0.18);
+        border-radius: 999px;
+        background: rgba(9, 17, 31, 0.7);
+        color: var(--nc-primary-3);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .admin-hero h1 {
+        margin: 0;
+        color: var(--nc-text);
+        font-size: clamp(1.55rem, 2.6vw, 2.35rem);
+        line-height: 1.1;
+        letter-spacing: -0.04em;
+    }
+
+    .admin-hero p {
+        margin: 12px 0 0;
+        color: var(--nc-muted);
+        max-width: 56rem;
+    }
+
+    .admin-hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        flex: 1 1 24rem;
+        min-width: min(100%, 24rem);
+    }
+
+    .admin-metric {
+        padding: 16px;
+        border: 1px solid rgba(96, 165, 250, 0.14);
+        border-radius: 16px;
+        background: rgba(9, 17, 31, 0.72);
+    }
+
+    .admin-metric-label {
+        color: var(--nc-muted);
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .admin-metric-value {
+        margin-top: 8px;
+        color: #f8fbff;
+        font-size: 1.25rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
+
+    .admin-metric-note {
+        margin-top: 6px;
+        color: var(--nc-muted);
+        font-size: 0.85rem;
+    }
+
+    .admin-home-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+        gap: 18px;
+        align-items: start;
+    }
+
+    .admin-home-main {
+        display: grid;
+        gap: 18px;
+    }
+
+    .admin-home-note {
+        padding: 14px 16px;
+        border: 1px solid rgba(96, 165, 250, 0.14);
+        border-radius: 14px;
+        background: rgba(9, 17, 31, 0.55);
+        color: var(--nc-muted);
+        font-size: 0.92rem;
+    }
+
+    #content-main > .module + .module {
+        margin-top: 18px;
+    }
+
+    #content-related {
+        margin-top: 0;
+    }
+
+    #content-related .module {
+        position: sticky;
+        top: 18px;
+    }
+
+    @media (max-width: 1100px) {
+        .admin-home-grid {
+            grid-template-columns: 1fr;
+        }
+
+        #content-related .module {
+            position: static;
+        }
+    }
+
+    @media (max-width: 700px) {
+        .admin-hero {
+            padding: 18px;
+        }
+
+        .admin-hero-metrics {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block bodyclass %}{{ block.super }} dashboard admin-home{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+{% block nav-sidebar %}{% endblock %}
+
+{% block content %}
+<div class="admin-home">
+    <section class="admin-hero">
+        <div class="admin-hero-copy">
+            <div class="admin-hero-kicker">
+                <i class="fas fa-shield-halved"></i>
+                Admin Console
+            </div>
+            <h1>NetConnect ISP system management</h1>
+            <p>Manage clients, payments, applications, tickets, and security tools from one dark control surface aligned with the rest of your system UI.</p>
+        </div>
+        <div class="admin-hero-metrics">
+            <div class="admin-metric">
+                <div class="admin-metric-label">Quick Access</div>
+                <div class="admin-metric-value">All Modules</div>
+                <div class="admin-metric-note">Apps, payments, tickets, and security</div>
+            </div>
+            <div class="admin-metric">
+                <div class="admin-metric-label">Theme</div>
+                <div class="admin-metric-value">NetConnect Dark</div>
+                <div class="admin-metric-note">Matches the dashboard palette</div>
+            </div>
+            <div class="admin-metric">
+                <div class="admin-metric-label">Focus</div>
+                <div class="admin-metric-value">System Control</div>
+                <div class="admin-metric-note">No visual noise, just actions</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="admin-home-grid">
+        <div class="admin-home-main">
+            <div class="admin-home-note">Use the action links to add or change records. The cards below follow the same panel styling as the rest of the system UI.</div>
+            <div id="content-main">
+                {% include "admin/app_list.html" with app_list=app_list show_changelinks=True %}
+            </div>
+        </div>
+
+        <aside id="content-related">
+            <div class="module" id="recent-actions-module">
+                <h2>{% translate 'Recent actions' %}</h2>
+                <h3>{% translate 'My actions' %}</h3>
+                {% get_admin_log 10 as admin_log for_user user %}
+                {% if not admin_log %}
+                    <p>{% translate 'None available' %}</p>
+                {% else %}
+                    <ul class="actionlist">
+                        {% for entry in admin_log %}
+                        <li class="{% if entry.is_addition %}addlink{% endif %}{% if entry.is_change %}changelink{% endif %}{% if entry.is_deletion %}deletelink{% endif %}">
+                            {% if entry.is_deletion or not entry.get_admin_url %}
+                                {{ entry.object_repr }}
+                            {% else %}
+                                <a href="{{ entry.get_admin_url }}">{{ entry.object_repr }}</a>
+                            {% endif %}
+                            <br>
+                            {% if entry.content_type %}
+                                <span class="mini quiet">{% filter capfirst %}{{ entry.content_type.name }}{% endfilter %}</span>
+                            {% else %}
+                                <span class="mini quiet">{% translate 'Unknown content' %}</span>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}

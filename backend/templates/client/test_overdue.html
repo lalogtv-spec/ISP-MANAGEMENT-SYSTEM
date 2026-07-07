@@ -1,0 +1,232 @@
+{% extends 'client/base.html' %}
+
+{% block title %}Test Overdue Notifications - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2>📬 Test Overdue Payment Notifications</h2>
+            <p class="text-muted">Development mode: Simulate overdue payment scenarios</p>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong>⚠️ Error:</strong> {{ error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Test Information -->
+        <div class="col-md-8">
+            <!-- Info Box -->
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading">ℹ️ Test Information</h5>
+                <p class="mb-2">
+                    This page allows you to simulate overdue payment scenarios and test notification sending.
+                    Notifications will be sent via email and SMS (mock mode).
+                </p>
+                <hr>
+                <p class="mb-0">
+                    <strong>Grace Period:</strong> {{ grace_period_days }} days before service disconnection
+                </p>
+            </div>
+
+            <!-- Account Info -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">💼 Account Information</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td><strong>Client ID:</strong></td>
+                            <td>{{ client.client_id }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Name:</strong></td>
+                            <td>{{ client.name }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Email:</strong></td>
+                            <td>{{ client.email }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Phone:</strong></td>
+                            <td>{{ client.phone }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Plan:</strong></td>
+                            <td>{{ client.plan }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Current Balance:</strong></td>
+                            <td>
+                                <span class="badge bg-warning">₱{{ client.balance|floatformat:2 }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Status:</strong></td>
+                            <td>
+                                {% if client.status == 'Active' %}
+                                    <span class="badge bg-success">{{ client.status }}</span>
+                                {% elif client.status == 'Overdue' %}
+                                    <span class="badge bg-warning">{{ client.status }}</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ client.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Due Date:</strong></td>
+                            <td>{{ client.due_date }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Test Form -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">📝 Simulate Overdue Scenario</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'test-overdue-notification' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="days_overdue" class="form-label"><strong>Days Overdue</strong></label>
+                            <select class="form-select" id="days_overdue" name="days_overdue" onchange="updateNotificationType()" required>
+                                <option value="">-- Select days overdue --</option>
+                                <option value="1">1 Day Overdue (First Notice)</option>
+                                <option value="2">2 Days Overdue (First Notice)</option>
+                                <option value="3">3 Days Overdue (Second Notice - Final Day of Grace)</option>
+                                <option value="4">4 Days Overdue (Disconnection Warning)</option>
+                                <option value="5">5 Days Overdue (Disconnection Warning)</option>
+                                <option value="7">7 Days Overdue (Disconnection Warning)</option>
+                            </select>
+                            <small class="form-text text-muted d-block mt-2">
+                                <strong>Grace Period Timeline:</strong>
+                                <br>📌 Days 1-2: First Notice
+                                <br>📌 Days 3-3: Second Notice (Final Day)
+                                <br>🔴 Days 4+: Disconnection Warning
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div id="notification_type" class="alert alert-secondary" style="display:none;">
+                                <strong>Notification Type:</strong> <span id="type_text"></span>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <strong>⚠️ Important:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>This will simulate sending notifications via Email and SMS</li>
+                                <li>In mock mode: notifications are logged to console</li>
+                                <li>Client status will be updated based on overdue days</li>
+                                <li>No real emails or SMS will be sent (development mode)</li>
+                            </ul>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-warning" id="submit_btn">
+                                📬 Send Test Notifications
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Reference Information -->
+            <div class="alert alert-secondary mt-4">
+                <h5>📚 Notification Reference</h5>
+                <div class="row mt-3">
+                    <div class="col-md-4">
+                        <strong>First Notice (Days 1-2)</strong>
+                        <small class="d-block text-muted">
+                            Friendly reminder payment is due. Grace period active.
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Second Notice (Days 3)</strong>
+                        <small class="d-block text-muted">
+                            Urgent notice. Final day of grace period.
+                        </small>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Disconnection Warning (Days 4+)</strong>
+                        <small class="d-block text-muted">
+                            Final notice. Service will be disconnected.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-md-4">
+            <!-- Quick Info -->
+            <div class="card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h6 class="mb-0">💡 How It Works</h6>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li>Select the number of days overdue</li>
+                        <li>System determines notification type</li>
+                        <li>Click "Send Test Notifications"</li>
+                        <li>Mock email and SMS are logged</li>
+                        <li>Notification record is created</li>
+                        <li>Client status is updated if needed</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- Mock Mode Info -->
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0">✅ Mock Mode Active</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">
+                        <small>No real credentials needed for testing. All notifications are simulated and logged to console.</small>
+                    </p>
+                    <p class="mb-0">
+                        <small><strong>To enable real emails/SMS:</strong> Set USE_MOCK_NOTIFICATIONS = False in notification_service.py and configure credentials.</small>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateNotificationType() {
+    const days = parseInt(document.getElementById('days_overdue').value);
+    const typeDiv = document.getElementById('notification_type');
+    const typeText = document.getElementById('type_text');
+    
+    if (isNaN(days)) {
+        typeDiv.style.display = 'none';
+        return;
+    }
+    
+    typeDiv.style.display = 'block';
+    let type = '';
+    
+    if (days <= 2) {
+        type = 'First Notice - Friendly Reminder';
+    } else if (days === 3) {
+        type = 'Second Notice - Urgent (Final Day of Grace)';
+    } else {
+        type = 'Disconnection Warning - Service Will Be Disconnected';
+    }
+    
+    typeText.textContent = type;
+}
+</script>
+{% endblock %}
+

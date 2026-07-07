@@ -1,0 +1,101 @@
+{% extends "client/base.html" %}
+
+{% block title %}Create New Ticket - NetConnect ISP{% endblock %}
+{% block page_title %}Create New Ticket{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6 py-6">
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.45)]">
+        <h1 class="text-3xl font-semibold text-slate-100">Create New Ticket</h1>
+        <p class="mt-2 text-sm text-slate-400">Open a request and our team will respond promptly.</p>
+    </section>
+
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-sm">
+        <form method="post" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label for="category" class="block text-sm font-medium text-slate-200">Problem</label>
+                    <select id="category" name="category" class="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" required>
+                        <option value="">Select problem type</option>
+                        <option value="Payment Issue" {% if request.POST.category == 'Payment Issue' %}selected{% endif %}>Payment Issue</option>
+                        <option value="Service Outage" {% if request.POST.category == 'Service Outage' %}selected{% endif %}>Service Outage</option>
+                        <option value="Billing Question" {% if request.POST.category == 'Billing Question' %}selected{% endif %}>Billing Question</option>
+                        <option value="Technical Support" {% if request.POST.category == 'Technical Support' %}selected{% endif %}>Technical Support</option>
+                        <option value="Other" {% if request.POST.category == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label for="attachment" class="block text-sm font-medium text-slate-200">Attachments</label>
+                    <label for="attachment" class="mt-2 flex h-40 w-full cursor-pointer items-center justify-center rounded-3xl border border-dashed border-slate-700 bg-slate-900 px-4 text-center text-sm text-slate-400 transition hover:border-blue-500 hover:text-slate-100">
+                        <div>
+                            <p class="font-semibold text-slate-100">Drag files here</p>
+                            <p class="mt-2 text-xs text-slate-500">or click to browse</p>
+                        </div>
+                    </label>
+                    <input id="attachment" name="attachment" type="file" accept="image/*" class="hidden" />
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label for="description" class="block text-sm font-medium text-slate-200">Description</label>
+                <textarea id="description" name="description" rows="8" class="mt-2 w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" placeholder="Describe the issue here..." autocomplete="off">{{ request.POST.description|default:'' }}</textarea>
+                <div class="space-y-2 text-center">
+                    <p class="text-xs text-slate-500">Provide as much detail as possible, up to 250 characters.</p>
+                    <p id="descriptionCounter" class="font-medium text-emerald-300">0/250 characters</p>
+                    <p id="descriptionCharCounter" class="text-xs text-slate-500">0 characters</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <a href="{% url 'dashboard:client-tickets' %}" class="inline-flex items-center justify-center rounded-full border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancel</a>
+                <button type="submit" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">Submit Ticket</button>
+            </div>
+        </form>
+    </section>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const textarea = document.getElementById('description');
+    const counter = document.getElementById('descriptionCounter');
+    const charCounter = document.getElementById('descriptionCharCounter');
+    const form = textarea ? textarea.closest('form') : null;
+    const charLimit = 250;
+
+    function updateCounter() {
+        if (!textarea) return;
+        const chars = textarea.value.length;
+        const overBy = Math.max(0, chars - charLimit);
+        textarea.classList.toggle('border-rose-500', overBy > 0);
+        textarea.classList.toggle('focus:border-rose-500', overBy > 0);
+        textarea.classList.toggle('focus:border-blue-500', overBy <= 0);
+        textarea.setAttribute('aria-invalid', overBy > 0 ? 'true' : 'false');
+        if (counter) {
+            counter.textContent = overBy > 0 ? `Exceeded by ${overBy} characters` : `${chars}/${charLimit} characters`;
+            counter.classList.toggle('text-rose-400', overBy > 0);
+            counter.classList.toggle('text-emerald-300', overBy <= 0);
+        }
+        if (charCounter) {
+            charCounter.textContent = `${chars} characters`;
+        }
+    }
+
+    if (textarea) {
+        textarea.addEventListener('input', updateCounter);
+        updateCounter();
+    }
+
+    if (form && textarea) {
+        form.addEventListener('submit', function(event) {
+            if (textarea.value.length > charLimit) {
+                event.preventDefault();
+                alert(`Description exceeds the ${charLimit}-character limit. Please shorten it.`);
+                textarea.focus();
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

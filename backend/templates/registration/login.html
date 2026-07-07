@@ -1,0 +1,606 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - NetConnect ISP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #07111f;
+            --card: rgba(10, 18, 35, 0.96);
+            --border: rgba(148, 163, 184, 0.18);
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--fg);
+            font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+                radial-gradient(circle at top right, rgba(129, 140, 248, 0.16), transparent 28%),
+                linear-gradient(135deg, #020617 0%, #0f172a 55%, #111827 100%);
+            overflow-x: hidden;
+        }
+        body.modal-open { overflow: hidden; }
+        .shell {
+            width: 100%;
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+        .card {
+            width: min(520px, 100%);
+            height: fit-content;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+            transition: filter 0.25s ease, transform 0.25s ease;
+        }
+        .card.is-locked {
+            filter: blur(4px) brightness(0.74);
+            transform: scale(0.995);
+            pointer-events: none;
+        }
+        .hero { padding: 32px 32px 24px; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+        .eyebrow {
+            text-transform: uppercase;
+            letter-spacing: 0.22em;
+            font-size: 11px;
+            color: #7dd3fc;
+            font-weight: 800;
+        }
+        .title { margin: 8px 0 18px; font-size: clamp(30px, 4vw, 48px); line-height: 0.98; font-weight: 900; color: white; }
+        .panel {
+            border: none;
+            background: transparent;
+            backdrop-filter: none;
+            border-radius: 24px;
+            padding: 32px;
+        }
+        .grid-2 { display: grid; gap: 16px; grid-template-columns: 1fr; }
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+        .field {
+            width: 100%;
+            border-radius: 18px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            padding: 16px 18px;
+            font-size: 15px;
+            outline: none;
+        }
+        .field:focus { border-color: rgba(56, 189, 248, 0.9); box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12); }
+        .primary {
+            width: 100%;
+            border: none;
+            border-radius: 18px;
+            padding: 16px 18px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8);
+            color: white;
+            font-weight: 800;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            box-shadow: 0 18px 35px rgba(56, 189, 248, 0.18);
+            cursor: pointer;
+            transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease;
+        }
+        .primary:hover { filter: brightness(1.07); transform: translateY(-1px); box-shadow: 0 22px 40px rgba(56, 189, 248, 0.22); }
+        .secondary {
+            width: 100%;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 18px;
+            padding: 15px 18px;
+            background: rgba(15, 23, 42, 0.88);
+            color: white;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: border-color 0.2s ease, background-color 0.2s ease;
+        }
+        .secondary:hover { border-color: rgba(56, 189, 248, 0.4); background: rgba(15, 23, 42, 0.96); }
+        .muted { color: var(--muted); font-size: 13px; line-height: 1.7; }
+        .notice, .error, .success { border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+        .notice { background: rgba(56, 189, 248, 0.12); border: 1px solid rgba(56, 189, 248, 0.26); color: #bfdbfe; }
+        .error { background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.26); color: #fecaca; }
+        .success { background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.26); color: #bbf7d0; }
+        .footer { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 0 32px 32px; color: #cbd5e1; font-size: 14px; }
+        .footer a { color: #7dd3fc; text-decoration: none; }
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(2, 6, 23, 0.8);
+            backdrop-filter: blur(16px);
+        }
+        .backdrop.is-open { display: flex; }
+        .modal {
+            position: relative;
+            width: min(760px, 100%);
+            max-height: min(920px, calc(100vh - 40px));
+            overflow: auto;
+            border-radius: 28px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(3, 10, 24, 0.97);
+            box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+            padding: 24px;
+            color: white;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 42px;
+            height: 42px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.95);
+            color: white;
+            cursor: pointer;
+        }
+        .video-shell {
+            position: relative;
+            margin-top: 16px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: #020617;
+            aspect-ratio: 4 / 3;
+        }
+        .video-shell video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            background: #01040b;
+            transform: scaleX(-1); /* mirror preview so it feels like a mirror */
+        }
+        .face-frame {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .face-frame::before {
+            content: '';
+            width: min(72%, 320px);
+            aspect-ratio: 1;
+            border: 2px solid rgba(255, 255, 255, 0.75);
+            border-radius: 28px;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+        }
+        .step-list {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .step-item {
+            border-radius: 16px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #cbd5e1;
+            background: rgba(15, 23, 42, 0.75);
+            transition: all 0.2s ease;
+        }
+        .step-item.active { border-color: rgba(56, 189, 248, 0.5); color: white; background: rgba(56, 189, 248, 0.12); }
+        .step-item.complete { border-color: rgba(34, 197, 94, 0.6); color: #dcfce7; background: rgba(34, 197, 94, 0.16); }
+        .step-item.success-flash {
+            animation: successPulse 0.7s ease;
+        }
+        .step-item strong { display: block; font-size: 11px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.16em; }
+        .capture-progress {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .status-box {
+            margin-top: 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            background: rgba(15, 23, 42, 0.9);
+            padding: 14px 16px;
+        }
+        .status-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: #7dd3fc; margin-bottom: 6px; }
+        .status-line { color: #f8fafc; font-size: 15px; line-height: 1.6; }
+        .status-detail { margin-top: 4px; color: #94a3b8; font-size: 13px; }
+        .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+        .actions .secondary { width: auto; min-width: 120px; }
+        @keyframes successPulse {
+            0% { transform: scale(0.98); }
+            50% { transform: scale(1.02); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.14); }
+            100% { transform: scale(1); }
+        }
+        @media (max-width: 640px) { .step-list { grid-template-columns: 1fr; } .actions { flex-direction: column; } .actions .secondary { width: 100%; } }
+        /* Centered modal styles for face login */
+        .modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            z-index: 9999;
+            padding: 12px;
+            width: min(840px, 90vw);
+            max-height: 92vh;
+        }
+        .modal.visible { display: block; }
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.65);
+            z-index: 9998;
+            opacity: 0;
+            transition: opacity 220ms ease;
+        }
+        .modal.visible .modal-backdrop { opacity: 1; }
+        .modal-box {
+            position: relative;
+            z-index: 9999;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border-radius: 18px;
+            padding: 20px;
+            background: rgba(15, 23, 42, 0.96);
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            transform: translateY(6px) scale(0.985);
+            opacity: 0;
+            transition: transform 240ms cubic-bezier(.2,.9,.3,1), opacity 200ms ease;
+        }
+        .modal.visible .modal-box {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+
+        /* Larger presentation on wide screens */
+        @media (min-width: 1100px) {
+            .modal { width: 820px; }
+            .modal-box { padding: 28px; border-radius: 20px; }
+            .video-shell { aspect-ratio: 4/3; }
+        }
+
+        /* Fullscreen modal on small screens */
+        @media (max-width: 640px) {
+            .modal {
+                top: 0;
+                left: 0;
+                transform: none;
+                width: 100vw;
+                height: 100vh;
+                padding: 0;
+            }
+            .modal-backdrop { display: none; }
+            .modal-box {
+                width: 100%;
+                height: 100%;
+                border-radius: 0;
+                max-height: none;
+                padding: 16px;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+            }
+            .video-shell { flex: 1 1 auto; width: 100%; border-radius: 0; }
+            .modal.visible .modal-backdrop { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="shell">
+        <div class="card" id="login-card">
+            <div class="hero">
+                <div class="eyebrow">Secure sign in</div>
+                <h1 class="title">NetConnect Login</h1>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="flash-message {% if message.tags == 'success' %}success{% else %}error{% endif %}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <div class="panel">
+                    <form method="post" action="{% url 'login' %}" class="grid-2">
+                        {% csrf_token %}
+                        <div>
+                            <label for="id_username">Username or Email</label>
+                            <input class="field" id="id_username" type="text" name="username" placeholder="Enter username or email" autocomplete="username" required>
+                        </div>
+                        <div>
+                            <label for="id_password">Password</label>
+                            <input class="field" id="id_password" type="password" name="password" placeholder="Enter password" autocomplete="current-password" required>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <button class="primary" type="submit">Sign In</button>
+                        </div>
+                    </form>
+
+                    <div style="margin-top: 18px; display: flex; flex-wrap: wrap; gap: 12px;">
+                        <button type="button" id="show-face" class="secondary" style="flex: 1 1 220px;">
+                            <i class="fas fa-user-circle" style="margin-right:8px;"></i>
+                            Face Login
+                        </button>
+                        <button type="button" id="show-fingerprint" class="secondary" style="flex: 1 1 220px;">
+                            <i class="fas fa-fingerprint" style="margin-right:8px;"></i>
+                            Fingerprint Login
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="footer">
+                <div>Don't have an account? <a href="/register/">Register</a></div>
+            </div>
+        </div>
+    </div>
+    <!-- Face login modal -->
+    <div id="face-modal" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-backdrop"></div>
+        <div class="modal-box">
+            <button class="modal-close" id="face-modal-close">✕</button>
+            <h3 style="margin:0 0 8px;font-size:18px">Face Login</h3>
+            <p class="muted">Use your phone or device face or fingerprint biometrics for quick sign in.</p>
+            <div class="video-shell" style="margin-top:12px;">
+                <video id="face-login-video" autoplay muted playsinline></video>
+                <div class="face-frame"></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;">
+                <button type="button" id="face-capture-btn" class="primary" style="padding:10px 14px;">Capture & Sign In</button>
+                <button type="button" id="face-cancel-btn" class="secondary" style="padding:10px 14px;">Cancel</button>
+            </div>
+            <div id="face-login-status" class="status-line muted" style="margin-top:12px;">Ready to capture.</div>
+        </div>
+    </div>
+
+    <script>
+        function base64UrlToArrayBuffer(value) {
+            if (!value) return new Uint8Array(0).buffer;
+            const base64 = String(value).replace(/-/g, '+').replace(/_/g, '/');
+            const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+            const binary = window.atob(padded);
+            const bytes = new Uint8Array(binary.length);
+            for (let index = 0; index < binary.length; index += 1) {
+                bytes[index] = binary.charCodeAt(index);
+            }
+            return bytes.buffer;
+        }
+
+        function arrayBufferToBase64Url(value) {
+            const bytes = new Uint8Array(value);
+            let binary = '';
+            for (let index = 0; index < bytes.byteLength; index += 1) {
+                binary += String.fromCharCode(bytes[index]);
+            }
+            return window.btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+            const showFace = document.getElementById('show-face');
+            const showFingerprint = document.getElementById('show-fingerprint');
+            const statusLine = document.getElementById('biometric-login-status');
+            const statusDetail = document.getElementById('biometric-login-detail');
+            const usernameInput = document.getElementById('id_username');
+
+            function setStatus(message, detail = '') {
+                if (statusLine) statusLine.textContent = message || '';
+                if (statusDetail) statusDetail.textContent = detail || '';
+            }
+
+            async function performBiometricLogin(biometricType) {
+                if (!window.isSecureContext || !window.PublicKeyCredential || !navigator.credentials?.get) {
+                    setStatus(`${biometricType} login requires a secure browser.`, `Use a supported browser or device with ${biometricType.toLowerCase()} biometric support.`);
+                    return;
+                }
+
+                const rpId = window.location.hostname;
+                const origin = window.location.origin;
+                setStatus(`Starting ${biometricType.toLowerCase()} login...`, `Please complete the browser ${biometricType.toLowerCase()} biometric prompt.`);
+                const beginUrl = '{% url "dashboard:fingerprint-login-begin" %}';
+                const finishUrl = '{% url "dashboard:fingerprint-login-finish" %}';
+
+                try {
+                    const beginResponse = await fetch(`${beginUrl}?origin=${encodeURIComponent(origin)}&rp_id=${encodeURIComponent(rpId)}`, { credentials: 'same-origin' });
+                    const beginData = await beginResponse.json().catch(() => ({}));
+                    if (!beginResponse.ok || !beginData.success) {
+                        throw new Error(beginData.error || `Unable to start ${biometricType.toLowerCase()} login.`);
+                    }
+
+                    const publicKey = beginData.options;
+                    publicKey.challenge = base64UrlToArrayBuffer(publicKey.challenge);
+                    publicKey.allowCredentials = (publicKey.allowCredentials || []).map((item) => ({
+                        ...item,
+                        id: base64UrlToArrayBuffer(item.id),
+                    }));
+
+                    const assertion = await navigator.credentials.get({ publicKey });
+
+                    const finishResponse = await fetch(finishUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken,
+                        },
+                        credentials: 'same-origin',
+                        body: JSON.stringify({
+                            credential: {
+                                id: assertion.id,
+                                rawId: arrayBufferToBase64Url(assertion.rawId),
+                                type: assertion.type,
+                                response: {
+                                    clientDataJSON: arrayBufferToBase64Url(assertion.response.clientDataJSON),
+                                    authenticatorData: arrayBufferToBase64Url(assertion.response.authenticatorData),
+                                    signature: arrayBufferToBase64Url(assertion.response.signature),
+                                    userHandle: assertion.response.userHandle ? arrayBufferToBase64Url(assertion.response.userHandle) : '',
+                                },
+                            },
+                        }),
+                    });
+
+                    const finishData = await finishResponse.json().catch(() => ({}));
+                    if (!finishResponse.ok || !finishData.success) {
+                        throw new Error(finishData.error || `${biometricType} login failed.`);
+                    }
+
+                    setStatus(finishData.message || `${biometricType} login successful.`, 'Redirecting to your dashboard...');
+                    window.location.href = finishData.redirect_url || '/';
+                } catch (error) {
+                    const message = error?.message || `${biometricType} login failed.`;
+                    console.error(`${biometricType} login error:`, error);
+                    setStatus(message, 'Try again or sign in with username and password.');
+                }
+            }
+
+            showFingerprint?.addEventListener('click', async () => {
+                await performBiometricLogin('Fingerprint');
+            });
+
+            // Face login flow
+            const showFaceBtn = document.getElementById('show-face');
+            const faceModal = document.getElementById('face-modal');
+            const faceVideo = document.getElementById('face-login-video');
+            const faceCaptureBtn = document.getElementById('face-capture-btn');
+            const faceCancelBtn = document.getElementById('face-cancel-btn');
+            const faceCloseBtn = document.getElementById('face-modal-close');
+            const faceLoginStatus = document.getElementById('face-login-status');
+            const faceLoginUrl = "{% url 'face-auth-login' %}";
+
+            let faceStream = null;
+
+            function setFaceStatus(msg) {
+                if (faceLoginStatus) faceLoginStatus.textContent = msg;
+            }
+
+            async function openFaceModal() {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    alert('Camera not available in this browser.');
+                    return;
+                }
+                try {
+                    faceStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                    faceVideo.srcObject = faceStream;
+                    faceModal.classList.add('visible');
+                    document.body.classList.add('modal-open');
+                    setFaceStatus('Camera ready. Position your face inside the frame.');
+                    await faceVideo.play().catch(() => undefined);
+                } catch (err) {
+                    setFaceStatus('Unable to access camera.');
+                }
+            }
+
+            function closeFaceModal() {
+                faceModal.classList.remove('visible');
+                document.body.classList.remove('modal-open');
+                setFaceStatus('Ready to capture.');
+                if (faceStream) {
+                    const tracks = faceStream.getTracks();
+                    tracks.forEach(t => t.stop());
+                    faceStream = null;
+                }
+                if (faceVideo) faceVideo.srcObject = null;
+            }
+
+            async function captureAndSendFace() {
+                if (!faceVideo || !usernameInput) {
+                    setFaceStatus('Missing camera or username.');
+                    return;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = faceVideo.videoWidth || 640;
+                canvas.height = faceVideo.videoHeight || 480;
+                const ctx = canvas.getContext('2d');
+                // Mirror the captured image so the saved image matches the preview (mirror view)
+                ctx.save();
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(faceVideo, 0, 0, canvas.width, canvas.height);
+                ctx.restore();
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+                setFaceStatus('Sending face capture for verification...');
+
+                try {
+                    const form = new FormData();
+                    form.append('username', usernameInput.value || '');
+                    form.append('face_image_data', dataUrl);
+
+                    const resp = await fetch(faceLoginUrl, {
+                        method: 'POST',
+                        body: form,
+                        credentials: 'same-origin',
+                        headers: {
+                            'X-CSRFToken': csrfToken
+                        }
+                    });
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok || !data.success) {
+                        throw new Error(data.error || 'Face login failed.');
+                    }
+                    setFaceStatus('Face verified — signing you in...');
+                    window.location.href = data.redirect_url || '/';
+                } catch (err) {
+                    console.error('Face login error', err);
+                    setFaceStatus(err.message || 'Face login failed.');
+                }
+            }
+
+            showFaceBtn?.addEventListener('click', async () => { await openFaceModal(); });
+            faceCaptureBtn?.addEventListener('click', async () => { await captureAndSendFace(); });
+            faceCancelBtn?.addEventListener('click', () => closeFaceModal());
+            faceCloseBtn?.addEventListener('click', () => closeFaceModal());
+
+            if (!usernameInput?.value) {
+                usernameInput?.focus();
+            }
+
+            setStatus('Ready for face or fingerprint login.', 'Enter your credentials or tap Face Login or Fingerprint Login.');
+        });
+    </script>
+    <script>
+        // Auto-hide flash messages after a timeout to avoid persistent panels
+        (function() {
+            const TIMEOUT_MS = 6000; // 6 seconds
+            window.addEventListener('load', () => {
+                const flashes = Array.from(document.querySelectorAll('.flash-message'));
+                if (!flashes.length) return;
+                setTimeout(() => {
+                    flashes.forEach(el => {
+                        try {
+                            el.style.transition = 'opacity 400ms ease, transform 400ms ease';
+                            el.style.opacity = '0';
+                            el.style.transform = 'translateY(-8px)';
+                            setTimeout(() => el.remove(), 450);
+                        } catch (e) {}
+                    });
+                }, TIMEOUT_MS);
+            });
+        })();
+    </script>
+</body>
+</html>

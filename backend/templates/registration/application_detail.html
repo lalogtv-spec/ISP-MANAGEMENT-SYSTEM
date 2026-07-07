@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Submitted - NetConnect ISP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #07111f;
+            --card: rgba(10, 18, 35, 0.96);
+            --border: rgba(148, 163, 184, 0.18);
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --primary: #38bdf8;
+            --secondary: #818cf8;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 32px 24px;
+            color: var(--fg);
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+                radial-gradient(circle at top right, rgba(129, 140, 248, 0.16), transparent 28%),
+                linear-gradient(135deg, #020617 0%, #0f172a 55%, #111827 100%);
+        }
+
+        .detail-container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .detail-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(10px);
+        }
+
+        .detail-header {
+            padding: 42px 36px 34px;
+            text-align: center;
+            background:
+                radial-gradient(circle at top, rgba(16, 185, 129, 0.12), transparent 35%),
+                linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 18, 35, 0.96) 100%);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .success-icon {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(16, 185, 129, 0.14);
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.32);
+        }
+
+        .success-icon i {
+            color: var(--success);
+            font-size: 38px;
+        }
+
+        .detail-title {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: #34d399;
+            margin-bottom: 8px;
+        }
+
+        .detail-subtitle {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        .detail-id {
+            margin: 24px auto 0;
+            max-width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(59, 130, 246, 0.28);
+            background: rgba(15, 23, 42, 0.95);
+            color: #93c5fd;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .detail-body {
+            padding: 32px 36px 36px;
+        }
+
+        .info-section {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: minmax(140px, 1fr) minmax(0, 1.2fr);
+            gap: 16px;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            text-align: right;
+            color: #f8fafc;
+            font-size: 14px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .info-value a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-weight: 800;
+        }
+
+        .info-value a:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .status-pending {
+            background: rgba(59, 130, 246, 0.16);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.28);
+        }
+
+        .message-box {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+            color: var(--fg);
+            line-height: 1.75;
+            font-size: 14px;
+        }
+
+        .message-box strong {
+            color: #f8fafc;
+            display: block;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 800;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            color: white;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 18px 35px rgba(56, 189, 248, 0.18);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+            box-shadow: 0 22px 40px rgba(56, 189, 248, 0.22);
+        }
+
+        .btn-secondary {
+            color: #e2e8f0;
+            background: #475569;
+            border-color: rgba(148, 163, 184, 0.08);
+        }
+
+        .btn-secondary:hover {
+            background: #334155;
+            transform: translateY(-1px);
+        }
+
+        .footer-text {
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            border-top: 1px solid rgba(148, 163, 184, 0.12);
+            background: rgba(15, 23, 42, 0.48);
+        }
+
+        @media (min-width: 640px) {
+            .action-buttons {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .detail-header,
+            .detail-body {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .detail-header {
+                padding-top: 30px;
+                padding-bottom: 26px;
+            }
+
+            .detail-title {
+                font-size: 26px;
+            }
+
+            .info-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+
+            .info-value {
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .detail-card {
+                border-radius: 22px;
+            }
+
+            .success-icon {
+                width: 74px;
+                height: 74px;
+            }
+
+            .success-icon i {
+                font-size: 34px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="detail-container">
+        <div class="detail-card">
+            <div class="detail-header">
+                <div class="success-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h1 class="detail-title">Application Submitted!</h1>
+                <p class="detail-subtitle">Your application has been successfully received.</p>
+                <div class="detail-id">Application ID: {{ application.app_id }}</div>
+            </div>
+
+            <div class="detail-body">
+                <div class="info-section">
+                    <div class="info-row">
+                        <span class="info-label">Applicant Name</span>
+                        <span class="info-value">{{ application.name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email Address</span>
+                        <span class="info-value">{{ application.email }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Contact Number</span>
+                        <span class="info-value">{{ application.phone }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address</span>
+                        <span class="info-value">{{ application.address }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Latitude</span>
+                        <span class="info-value">{{ application.latitude|default:"-" }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Longitude</span>
+                        <span class="info-value">{{ application.longitude|default:"-" }}</span>
+                    </div>
+                    {% if application.latitude and application.longitude %}
+                    <div class="info-row">
+                        <span class="info-label">Map Link</span>
+                        <span class="info-value">
+                            <a href="https://www.google.com/maps?q={{ application.latitude }},{{ application.longitude }}" target="_blank" rel="noopener noreferrer">Open Map</a>
+                        </span>
+                    </div>
+                    {% endif %}
+                    <div class="info-row">
+                        <span class="info-label">Selected Plan</span>
+                        <span class="info-value">{{ application.plan }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Status</span>
+                        <span class="info-value">
+                            <span class="status-pill status-pending">{{ application.status }}</span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="message-box">
+                    <strong>What happens next?</strong>
+                    Our team will review your application and contact you within 1 to 2 business days. Please keep your contact number and email accessible for faster communication.
+                </div>
+
+                <div class="action-buttons">
+                    <a href="{% url 'login' %}" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Sign In</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="footer-text">
+                NetConnect ISP Management System • Application Reference: {{ application.app_id }}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

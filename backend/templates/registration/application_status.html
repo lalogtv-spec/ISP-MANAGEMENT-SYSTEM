@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Status - NetConnect ISP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #07111f;
+            --card: rgba(10, 18, 35, 0.96);
+            --border: rgba(148, 163, 184, 0.18);
+            --fg: #e2e8f0;
+            --muted: #94a3b8;
+            --primary: #38bdf8;
+            --secondary: #818cf8;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 32px 24px;
+            color: var(--fg);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 30%),
+                radial-gradient(circle at top right, rgba(129, 140, 248, 0.16), transparent 28%),
+                linear-gradient(135deg, #020617 0%, #0f172a 55%, #111827 100%);
+        }
+
+        .status-container {
+            width: 100%;
+            max-width: 760px;
+        }
+
+        .status-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-header {
+            padding: 42px 36px 34px;
+            text-align: center;
+            background:
+                radial-gradient(circle at top, rgba(245, 158, 11, 0.12), transparent 35%),
+                linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(10, 18, 35, 0.96) 100%);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .status-icon {
+            width: 84px;
+            height: 84px;
+            margin: 0 auto 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            background: rgba(245, 158, 11, 0.14);
+        }
+
+        .status-icon.pending i {
+            color: var(--warning);
+            font-size: 38px;
+        }
+
+        .status-icon.declined {
+            border-color: rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.14);
+        }
+
+        .status-icon.declined i {
+            color: var(--danger);
+            font-size: 38px;
+        }
+
+        .status-title {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--fg);
+            margin-bottom: 8px;
+        }
+
+        .status-subtitle {
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--muted);
+        }
+
+        .status-body {
+            padding: 32px 36px 36px;
+        }
+
+        .meta-card {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0;
+        }
+
+        .meta-item {
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+        }
+
+        .meta-item:nth-last-child(-n+2) {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .meta-label {
+            color: var(--muted);
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .meta-value {
+            color: #f8fafc;
+            font-size: 14px;
+            font-weight: 700;
+            overflow-wrap: anywhere;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .status-pill.pending {
+            background: rgba(245, 158, 11, 0.16);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.28);
+        }
+
+        .status-pill.declined {
+            background: rgba(239, 68, 68, 0.16);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.28);
+        }
+
+        .section {
+            background: rgba(15, 23, 42, 0.72);
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            border-radius: 18px;
+            padding: 18px 20px;
+            margin-bottom: 22px;
+            line-height: 1.75;
+            font-size: 14px;
+        }
+
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 800;
+            color: #f8fafc;
+            margin-bottom: 12px;
+        }
+
+        .section-title i.warning {
+            color: var(--warning);
+        }
+
+        .section-title i.primary {
+            color: #60a5fa;
+        }
+
+        .section-title i.danger {
+            color: var(--danger);
+        }
+
+        .section-copy {
+            color: var(--fg);
+        }
+
+        .section-copy strong {
+            color: #f8fafc;
+        }
+
+        .section-copy ul {
+            margin-top: 12px;
+            margin-left: 18px;
+            display: grid;
+            gap: 8px;
+            color: #dbe4f0;
+        }
+
+        .reason-box {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 14px 16px;
+            border-radius: 14px;
+            color: #fca5a5;
+            line-height: 1.75;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 28px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            min-height: 48px;
+            padding: 12px 18px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 800;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            color: white;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            box-shadow: 0 18px 35px rgba(56, 189, 248, 0.18);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+            box-shadow: 0 22px 40px rgba(56, 189, 248, 0.22);
+        }
+
+        .btn-secondary {
+            color: #e2e8f0;
+            background: #475569;
+            border-color: rgba(148, 163, 184, 0.08);
+        }
+
+        .btn-secondary:hover {
+            background: #334155;
+            transform: translateY(-1px);
+        }
+
+        .footer-text {
+            padding: 16px 24px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--muted);
+            border-top: 1px solid rgba(148, 163, 184, 0.12);
+            background: rgba(15, 23, 42, 0.48);
+        }
+
+        .footer-text a {
+            color: #7dd3fc;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .footer-text a:hover {
+            color: #38bdf8;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 16px;
+            }
+
+            .status-header,
+            .status-body {
+                padding-left: 20px;
+                padding-right: 20px;
+            }
+
+            .status-header {
+                padding-top: 30px;
+                padding-bottom: 26px;
+            }
+
+            .status-title {
+                font-size: 26px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .status-card {
+                border-radius: 22px;
+            }
+
+            .status-icon {
+                width: 74px;
+                height: 74px;
+            }
+
+            .status-icon.pending i,
+            .status-icon.declined i {
+                font-size: 34px;
+            }
+
+            .meta-grid,
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .meta-item:nth-last-child(-n+2) {
+                border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+                padding-bottom: 14px;
+            }
+
+            .meta-item:last-child {
+                border-bottom: none;
+                padding-bottom: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-container">
+        <div class="status-card">
+            <div class="status-header">
+                {% if application.status == 'Pending' %}
+                    <div class="status-icon pending">
+                        <i class="fas fa-hourglass-half"></i>
+                    </div>
+                    <h1 class="status-title">Application Under Review</h1>
+                    <p class="status-subtitle">Your application is being processed.</p>
+                {% elif application.status == 'Declined' %}
+                    <div class="status-icon declined">
+                        <i class="fas fa-times"></i>
+                    </div>
+                    <h1 class="status-title">Application Declined</h1>
+                    <p class="status-subtitle">Your application could not be approved at this time.</p>
+                {% endif %}
+            </div>
+
+            <div class="status-body">
+                <div class="meta-card">
+                    <div class="meta-grid">
+                        <div class="meta-item">
+                            <div class="meta-label">Application ID</div>
+                            <div class="meta-value" style="font-family: 'Courier New', monospace;">{{ application.app_id }}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Status</div>
+                            <div class="meta-value">
+                                {% if application.status == 'Pending' %}
+                                    <span class="status-pill pending"><i class="fas fa-hourglass-half"></i> Pending</span>
+                                {% elif application.status == 'Declined' %}
+                                    <span class="status-pill declined"><i class="fas fa-times"></i> Declined</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Submitted Date</div>
+                            <div class="meta-value">{{ application.date|date:"M d, Y" }}</div>
+                        </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Internet Plan</div>
+                            <div class="meta-value">{{ application.plan }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {% if application.status == 'Pending' %}
+                    <div class="section">
+                        <div class="section-title">
+                            <i class="fas fa-info-circle warning"></i>
+                            <span>What’s Happening?</span>
+                        </div>
+                        <div class="section-copy">
+                            Our team is reviewing your application. We verify your information and service availability in your area.
+                            <p style="margin-top: 12px;"><strong>Typical Review Time:</strong> 1-2 business days</p>
+                            <p style="margin-top: 12px;">You’ll receive an email confirmation once your application is approved or if we need additional information.</p>
+                        </div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-title">
+                            <i class="fas fa-phone primary"></i>
+                            <span>Contact Us</span>
+                        </div>
+                        <div class="section-copy">
+                            Need help? Contact our support team at <strong>+63 966 620 9625</strong> or email us.
+                        </div>
+                    </div>
+                {% elif application.status == 'Declined' %}
+                    <div class="section">
+                        <div class="section-title">
+                            <i class="fas fa-exclamation-triangle danger"></i>
+                            <span>Application Status</span>
+                        </div>
+                        <div class="section-copy">
+                            <p>Unfortunately, your application could not be approved at this time. This may be due to:</p>
+                            <ul>
+                                <li>Service unavailability in your area</li>
+                                <li>Address verification issues</li>
+                                <li>Other service limitations</li>
+                            </ul>
+                            <p style="margin-top: 12px;">You can reapply after addressing any issues. Please contact our support team for more information.</p>
+                        </div>
+                    </div>
+
+                    {% if application.reason %}
+                    <div class="section">
+                        <div class="section-title">
+                            <i class="fas fa-message primary"></i>
+                            <span>Rejection Reason</span>
+                        </div>
+                        <div class="reason-box">
+                            {{ application.reason }}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="section">
+                        <div class="section-title">
+                            <i class="fas fa-headset primary"></i>
+                            <span>Next Steps</span>
+                        </div>
+                        <div class="section-copy">
+                            Please reach out to our support team to discuss your application or explore other options.
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="action-buttons">
+                    {% if application.status == 'Declined' %}
+                        <a href="{% url 'dashboard:new_application' %}" class="btn btn-primary">
+                            <i class="fas fa-redo"></i>
+                            <span>Reapply</span>
+                        </a>
+                        <a href="{% url 'dashboard:logout' %}" class="btn btn-secondary">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sign Out</span>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'dashboard:registration-success' %}" class="btn btn-secondary">
+                            <i class="fas fa-home"></i>
+                            <span>Go Home</span>
+                        </a>
+                        <a href="{% url 'dashboard:logout' %}" class="btn btn-secondary">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <span>Sign Out</span>
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="footer-text">
+                Need help? <a href="#">Contact our support team</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

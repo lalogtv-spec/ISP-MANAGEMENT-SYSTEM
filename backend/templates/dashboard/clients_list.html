@@ -1,0 +1,163 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Clients - NetConnect ISP{% endblock %}
+{% block page_title %}Clients{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <style>
+        .client-action-btn {
+            width: 40px;
+            height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            border: 1px solid rgba(59, 130, 246, 0.16);
+            background: rgba(15, 23, 42, 0.92);
+            color: #93c5fd;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+            transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+        }
+        .client-action-btn:hover {
+            transform: translateY(-1px);
+            border-color: rgba(96, 165, 250, 0.55);
+            background: rgba(30, 41, 59, 0.98);
+            color: #dbeafe;
+        }
+        .client-action-cell {
+            width: 88px;
+            text-align: center;
+        }
+    </style>
+    <form method="get" class="grid gap-3 md:grid-cols-[1.5fr_1fr_1fr_auto] items-end">
+        <div>
+            <label for="search" class="sr-only">Search clients</label>
+            <input type="text" name="search" id="search" value="{{ search_query }}" placeholder="Search clients..." class="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white" />
+        </div>
+        <div>
+            <label for="status" class="sr-only">Status</label>
+            <select name="status" id="status" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white">
+                <option value="">All Status</option>
+                <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+                <option value="Overdue" {% if status_filter == 'Overdue' %}selected{% endif %}>Overdue</option>
+                <option value="Disconnected" {% if status_filter == 'Disconnected' %}selected{% endif %}>Disconnected</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">Search</button>
+        </div>
+    </form>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            {% if clients %}
+            <table class="min-w-full text-left text-sm text-slate-200">
+                <thead class="border-b border-slate-700 text-slate-300 bg-slate-950/80">
+                    <tr>
+                        <th class="px-4 py-3">Client Name</th>
+                        <th class="px-4 py-3">Plan</th>
+                        <th class="px-4 py-3">Due Date</th>
+                        <th class="px-4 py-3">Balance</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3 text-center">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+                        <td class="px-4 py-3">
+                            <div class="text-sm font-semibold">{{ client.name }}</div>
+                            <div class="text-xs text-slate-400">{{ client.email }}</div>
+                        </td>
+                        <td class="px-4 py-3">{{ client.plan }}</td>
+                        <td class="px-4 py-3">{{ client.due_date }}</td>
+                        <td class="px-4 py-3">₱{{ client.balance }}</td>
+                        <td class="px-4 py-3"><span class="badge badge-{{ client.status|lower }}">{{ client.status }}</span></td>
+                        <td class="client-action-cell px-4 py-3">
+                            <a href="{% url 'dashboard:client_detail' client.client_id %}" class="client-action-btn" aria-label="View client {{ client.name }}" title="View client">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="p-6 text-center text-slate-400">No clients found.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-200">
+        <div>
+            Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ page_obj.paginator.count }} clients
+        </div>
+        <div class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700">Previous</a>
+            {% endif %}
+            <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" class="rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- VIEW MODAL -->
+<div id="viewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-slate-700 rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Client Details</h3>
+            <button onclick="closeModal('viewModal')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-3 text-sm">
+            <div><span class="text-slate-400">Name:</span> <span id="viewName" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Email:</span> <span id="viewEmail" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Plan:</span> <span id="viewPlan" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Due Date:</span> <span id="viewDueDate" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Balance:</span> <span id="viewBalance" class="font-mono"></span></div>
+            <div><span class="text-slate-400">Status:</span> <span id="viewStatus" class="font-medium"></span></div>
+        </div>
+        <div class="mt-6 flex gap-2">
+            <button onclick="closeModal('viewModal')" class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 rounded">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-slate-700 rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold">Edit Client</h3>
+            <button onclick="closeModal('editModal')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="editClientId">
+        <div class="space-y-3 text-sm">
+            <div>
+                <label class="block text-slate-400 mb-1">Name</label>
+                <input type="text" id="editName" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white">
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1">Plan</label>
+                <input type="text" id="editPlan" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white">
+            </div>
+            <div>
+                <label class="block text-slate-400 mb-1">Status</label>
+                <select id="editStatus" class="w-full bg-slate-800 border border-slate-600 rounded px-3 py-2 text-white">
+                    <option>Active</option>
+                    <option>Overdue</option>
+                    <option>Disconnected</option>
+                </select>
+            </div>
+        </div>
+        <div class="mt-6 flex gap-2">
+            <button onclick="saveClient()" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded">Save</button>
+            <button onclick="closeModal('editModal')" class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 rounded">Cancel</button>
+        </div>
+    </div>
+</div>
+{% endblock %}

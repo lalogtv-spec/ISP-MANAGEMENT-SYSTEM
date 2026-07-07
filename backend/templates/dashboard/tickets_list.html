@@ -1,0 +1,766 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Support Tickets - NetConnect ISP{% endblock %}
+{% block page_title %}Support Tickets{% endblock %}
+
+{% block content %}
+<style>
+    .status-pill { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.9rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .status-pending { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .status-open { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .status-in-progress { background: rgba(168,85,247,0.15); color: #d8b4fe; }
+    .status-resolved { background: rgba(16,185,129,0.15); color: #86efac; }
+    .status-scheduled { background: rgba(14,165,233,0.12); color: #7dd3fc; }
+    .status-reschedule { background: rgba(34,197,94,0.12); color: #86efac; }
+    .status-closed { background: rgba(107,114,128,0.15); color: #cbd5e1; }
+    .priority-pill { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.9rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .priority-low { background: rgba(148,163,184,0.12); color: #cbd5e1; }
+    .priority-medium { background: rgba(59,130,246,0.15); color: #93c5fd; }
+    .priority-high { background: rgba(249,115,22,0.15); color: #fdba74; }
+    .priority-critical { background: rgba(239,68,68,0.15); color: #fda4af; }
+    .ticket-panel { max-height: 560px; min-height: 520px; overflow-y: auto; overflow-x: hidden; padding-right: 0.75rem; width: 100%; scrollbar-width: thin; scrollbar-color: rgba(96,165,250,0.42) rgba(2,6,23,0.42); scrollbar-gutter: stable both-edges; }
+    .ticket-panel::-webkit-scrollbar { width: 8px; }
+    .ticket-panel::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(125,211,252,0.56), rgba(59,130,246,0.44)); border-radius: 9999px; border: 2px solid rgba(2,6,23,0.42); }
+    .ticket-panel::-webkit-scrollbar-track { background: rgba(2,6,23,0.42); }
+    #ticketCards { display: grid; grid-template-columns: 1fr; gap: 0.95rem; align-content: start; grid-auto-rows: minmax(0, auto); }
+    @media (min-width: 1024px) {
+        #ticketCards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .ticket-card { width: 100%; max-width: 100%; min-width: 0; padding: 0.95rem; display: grid; gap: 0.8rem; align-items: stretch; overflow: visible; box-sizing: border-box; min-height: 240px; position: relative; }
+    .ticket-card-grid { display: grid; gap: 0.85rem; align-items: start; }
+    @media (min-width: 768px) {
+        .ticket-card-grid { grid-template-columns: minmax(0, 1fr) 220px; }
+    }
+    .ticket-card-title { font-size: 1.15rem; line-height: 1.3; }
+    .ticket-card-desc { font-size: 0.95rem; line-height: 1.6; margin-top: 0.5rem; word-break: break-word; overflow-wrap: break-word; white-space: normal; max-width: 100%; }
+    .ticket-card-meta { padding: 0.9rem; display: flex; flex-direction: column; justify-content: space-between; gap: 0.7rem; min-width: 0; }
+    .ticket-card-meta p { margin: 0; font-size: 0.9rem; word-break: break-word; }
+    .reschedule-request-button { width: auto; border: 1px solid rgba(34,197,94,0.35); background: rgba(16,185,129,0.14); color: #d1fae5; border-radius: 9999px; padding: 0.5rem 0.9rem; font-size: 0.75rem; font-weight: 700; text-align: center; cursor: pointer; transition: background 150ms ease, transform 150ms ease; }
+    .reschedule-request-button:hover { background: rgba(16,185,129,0.22); transform: translateY(-1px); }
+    .ticket-card-actions .reschedule-request-button { width: auto; }
+    .ticket-card-meta-row { display: grid; gap: 0.7rem; }
+    .ticket-card-meta-item { display: grid; gap: 0.35rem; }
+    .ticket-card-meta-label { font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+    .ticket-card-meta-value { font-size: 0.92rem; color: #e2e8f0; }
+    .ticket-card-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; margin-top: 0.7rem; }
+    .ticket-card-actions button, .ticket-card-actions a { width: 100%; }
+    .ticket-card-actions button.reschedule-request-button { width: auto; }
+    .status-pill, .priority-pill { font-size: 0.82rem; padding: 0.4rem 0.7rem; }
+</style>
+<div class="space-y-6">
+    <form class="hidden">{% csrf_token %}</form>
+    <section class="rounded-3xl border border-slate-700 bg-slate-950/90 p-5 shadow-sm lg:p-6">
+        <form method="get" class="grid gap-3 lg:grid-cols-[1.8fr_repeat(4,minmax(0,1fr))] items-end">
+            <div class="lg:col-span-1">
+                <label for="search" class="sr-only">Search tickets</label>
+                <div class="relative">
+                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-500"><i class="fas fa-search"></i></span>
+                    <input id="search" name="search" value="{{ search_query }}" placeholder="Search tickets" class="w-full rounded-3xl border border-slate-700 bg-slate-900/95 py-3 pl-12 pr-4 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+            <div>
+                <label for="status" class="sr-only">Filter by status</label>
+                <select id="status" name="status" class="w-full rounded-3xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                    <option value="">All Status</option>
+                    <option value="Pending" {% if status_filter == 'Pending' %}selected{% endif %}>Pending</option>
+                    <option value="Scheduled" {% if status_filter == 'Scheduled' %}selected{% endif %}>Scheduled</option>
+                    <option value="In Progress" {% if status_filter == 'In Progress' %}selected{% endif %}>In Progress</option>
+                    <option value="Resolved" {% if status_filter == 'Resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+            </div>
+            <div>
+                <label for="priority" class="sr-only">Filter by priority</label>
+                <select id="priority" name="priority" class="w-full rounded-3xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                    <option value="">All Priority</option>
+                    <option value="Low" {% if priority_filter == 'Low' %}selected{% endif %}>Low</option>
+                    <option value="Medium" {% if priority_filter == 'Medium' %}selected{% endif %}>Medium</option>
+                    <option value="High" {% if priority_filter == 'High' %}selected{% endif %}>High</option>
+                    <option value="Critical" {% if priority_filter == 'Critical' %}selected{% endif %}>Urgent</option>
+                </select>
+            </div>
+            <div>
+                <label for="category" class="sr-only">Filter by category</label>
+                <select id="category" name="category" class="w-full rounded-3xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                    <option value="">All Category</option>
+                    {% for category in ticket_categories %}
+                        <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="sort_by" class="sr-only">Sort by</label>
+                <select id="sort_by" name="sort_by" class="w-full rounded-3xl border border-slate-700 bg-slate-900/95 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none">
+                    <option value="">Sort by</option>
+                    <option value="latest" {% if sort_by == 'latest' or not sort_by %}selected{% endif %}>Latest Created</option>
+                    <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest</option>
+                    <option value="priority" {% if sort_by == 'priority' %}selected{% endif %}>Priority</option>
+                    <option value="status" {% if sort_by == 'status' %}selected{% endif %}>Status</option>
+                </select>
+            </div>
+        </form>
+    </section>
+
+    <section class="grid gap-4">
+        {% if tickets %}
+        <div class="ticket-panel rounded-3xl border border-slate-700 bg-slate-950/90 p-4">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-100">Tickets</h3>
+                    <p class="text-sm text-slate-400">Manage your support queue from here.</p>
+                </div>
+                {% if pending_reschedule_requests_count > 0 %}
+                <button type="button" onclick="openFirstRescheduleRequest()" class="reschedule-request-button">Review requests</button>
+                {% endif %}
+            </div>
+            <div id="ticketCards">
+                {% for ticket in tickets %}
+                <article class="ticket-card rounded-[24px] border border-slate-700 bg-slate-950/90 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+                <div class="ticket-card-grid">
+                    <div class="ticket-card-content space-y-3 min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 text-[0.68rem] uppercase tracking-[0.24em] text-slate-500">
+                            <span>#{{ ticket.ticket_id }}</span>
+                            <span class="rounded-full bg-slate-800 px-3 py-1 text-slate-300">{{ ticket.category }}</span>
+                        </div>
+                                <div class="ticket-card-title font-semibold text-slate-100">{{ ticket.client }}</div>
+                        <button type="button" onclick="if(this.dataset.desc) openDescriptionModal(this.dataset.desc)" data-desc="{{ ticket.description }}" class="text-xs text-blue-400 hover:text-blue-300 underline">View full message</button>
+                        <div class="flex flex-wrap gap-2">
+                            {% if ticket.status == 'Pending' %}
+                                <span class="status-pill status-pending">Pending</span>
+                            {% elif ticket.status == 'Scheduled' %}
+                                <span class="status-pill status-scheduled">Scheduled</span>
+                            {% elif ticket.ticket_id in pending_reschedule_request_ids %}
+                                <span class="status-pill status-reschedule">Reschedule requested</span>
+                            {% elif ticket.status == 'In Progress' %}
+                                <span class="status-pill status-in-progress">In Progress</span>
+                            {% elif ticket.status == 'Resolved' %}
+                                <span class="status-pill status-resolved">Resolved</span>
+                            {% else %}
+                                <span class="status-pill">{{ ticket.status }}</span>
+                            {% endif %}
+                            {% if ticket.priority == 'Low' %}
+                                <span class="priority-pill priority-low">Low</span>
+                            {% elif ticket.priority == 'Medium' %}
+                                <span class="priority-pill priority-medium">Medium</span>
+                            {% elif ticket.priority == 'High' %}
+                                <span class="priority-pill priority-high">High</span>
+                            {% else %}
+                                <span class="priority-pill priority-critical">Urgent</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="ticket-card-meta rounded-[20px] border border-slate-700 bg-slate-900/80 p-4 text-slate-400 shadow-inner">
+                        <div class="ticket-card-meta-row">
+                            <div class="ticket-card-meta-item">
+                                <p class="ticket-card-meta-label">Assigned</p>
+                                <p class="ticket-card-meta-value">{{ ticket.assigned|default:'Unassigned' }}</p>
+                            </div>
+                            <div class="ticket-card-meta-item">
+                                <p class="ticket-card-meta-label">Created</p>
+                                <p class="ticket-card-meta-value">{{ ticket.created|date:'M d, Y' }}</p>
+                            </div>
+                        </div>
+                        <div class="ticket-card-meta-row">
+                            <div class="ticket-card-meta-item">
+                                <p class="ticket-card-meta-label">Scheduled</p>
+                                <p class="ticket-card-meta-value">{% if ticket.scheduled_date %}{{ ticket.scheduled_date|date:'M d' }}{% else %}-{% endif %}{% if ticket.scheduled_time %} · {{ ticket.scheduled_time|time:'h:i A' }}{% endif %}</p>
+                            </div>
+                        </div>
+                        <div class="ticket-card-actions mt-4 pt-4 border-t border-slate-700">
+                            <button type="button" data-action="view-ticket" data-ticket-id="{{ ticket.ticket_id }}" class="rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500">View</button>
+                            {% if ticket.status != 'Scheduled' and ticket.ticket_id not in pending_reschedule_request_ids and ticket.status != 'Resolved' %}
+                            <button type="button" class="inline-flex items-center justify-center rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-100 hover:bg-slate-800" onclick="openScheduleModal(this)" data-ticket-id="{{ ticket.ticket_id }}" data-ticket-client="{{ ticket.client|escapejs }}" data-ticket-category="{{ ticket.category|escapejs }}" data-ticket-assigned="{{ ticket.assigned|default:''|escapejs }}" data-ticket-scheduled-date="{% if ticket.scheduled_date %}{{ ticket.scheduled_date|date:'Y-m-d' }}{% endif %}" data-ticket-scheduled-time="{% if ticket.scheduled_time %}{{ ticket.scheduled_time|time:'H:i' }}{% endif %}">Schedule</button>
+                            {% endif %}
+                            {% if ticket.status == 'Pending' %}
+                            <form method="post" action="{% url 'dashboard:ticket_update_status' ticket.ticket_id %}" class="w-full" onsubmit="return confirm('Verified: are you really going to change status to In Progress?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="In Progress" />
+                                <button type="submit" class="w-full rounded-3xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white hover:bg-violet-500">In Progress</button>
+                            </form>
+                            {% endif %}
+                            {% if ticket.status != 'Resolved' %}
+                            <form method="post" action="{% url 'dashboard:ticket_update_status' ticket.ticket_id %}" class="w-full" onsubmit="return confirm('Verified: are you really going to resolve this ticket?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="Resolved" />
+                                <button type="submit" class="w-full rounded-3xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500">Resolve</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                </article>
+                {% endfor %}
+        {% if pending_reschedule_request_ids %}
+        <div id="pendingRescheduleRequests" class="hidden">
+            {% for ticket in tickets %}
+                {% if ticket.ticket_id in pending_reschedule_request_ids %}
+                <div class="pending-reschedule-item" data-ticket-id="{{ ticket.ticket_id }}" data-request-desc="{{ ticket.reschedule_request.description|escape }}" data-requested-at="{{ ticket.reschedule_request.created_at|date:'M d, Y h:i A' }}" data-approve-url="{% url 'dashboard:approve-reschedule' ticket.ticket_id %}"></div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="rounded-3xl border border-slate-700 bg-slate-950/90 p-12 text-center shadow-xl shadow-black/20">
+            <div class="mx-auto mb-8 flex h-40 w-40 items-center justify-center rounded-3xl bg-slate-800 text-slate-300">
+                <i class="fas fa-headset fa-3x"></i>
+            </div>
+            <h2 class="text-3xl font-semibold text-slate-100">No support tickets yet.</h2>
+            <p class="mt-3 text-slate-400">No support tickets have been created yet.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+
+<!-- Description Modal -->
+<div id="descriptionModalOverlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onclick="closeDescriptionModal()"></div>
+<div id="descriptionModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-2xl rounded-[28px] border border-slate-700 bg-slate-950 p-6 shadow-2xl shadow-black/50">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <h2 class="text-2xl font-semibold text-slate-100">Full Description</h2>
+            <button type="button" onclick="closeDescriptionModal()" class="rounded-3xl bg-slate-900 p-3 text-slate-300 hover:bg-slate-800"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="descriptionModalContent" class="max-h-96 overflow-y-auto bg-slate-900 rounded-lg p-4 border border-slate-700 text-slate-300 whitespace-pre-wrap break-words"></div>
+        <button type="button" onclick="closeDescriptionModal()" class="mt-6 w-full rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">Close</button>
+    </div>
+</div>
+
+<div id="rescheduleRequestModalOverlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onclick="closeRescheduleRequestModal()"></div>
+<div id="rescheduleRequestModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-xl rounded-[28px] border border-slate-700 bg-slate-950 p-6 shadow-2xl shadow-black/50">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-semibold text-slate-100">Reschedule Request</h2>
+                <p class="mt-2 text-sm text-slate-400">Review the requested new appointment date and approve it if appropriate.</p>
+            </div>
+            <button type="button" onclick="closeRescheduleRequestModal()" class="rounded-3xl bg-slate-900 p-3 text-slate-300 hover:bg-slate-800"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="mt-6 space-y-5">
+            <div>
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Ticket ID</p>
+                <p id="rescheduleModalTicketId" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+            <div class="rounded-3xl bg-slate-900 p-5">
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Request details</p>
+                <p id="rescheduleModalDescription" class="mt-3 text-slate-300 leading-7"></p>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-slate-900 p-5">
+                <div>
+                    <p id="rescheduleModalPosition" class="text-sm font-semibold text-slate-100">Request 1 of 1</p>
+                    <p class="text-xs text-slate-500">Use arrows to move between pending reschedule requests.</p>
+                </div>
+                <div class="flex gap-2">
+                    <button id="prevRescheduleRequestBtn" type="button" onclick="openPrevRescheduleRequest()" class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Previous</button>
+                    <button id="nextRescheduleRequestBtn" type="button" onclick="openNextRescheduleRequest()" class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Next</button>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeRescheduleRequestModal()" class="rounded-3xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Close</button>
+                <button id="approveRescheduleRequestBtn" type="button" class="rounded-3xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-500" data-approve-url="" onclick="approveRescheduleRequest()">Approve Request</button>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<div id="scheduleModalOverlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onclick="closeScheduleModal()"></div>
+<div id="scheduleModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-2xl rounded-[28px] border border-slate-700 bg-slate-950 p-6 shadow-2xl shadow-black/50">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h2 class="text-2xl font-semibold text-slate-100">Schedule Service</h2>
+                <p class="mt-2 text-sm text-slate-400">Assign a technician and schedule the work from the ticket list.</p>
+            </div>
+            <button type="button" onclick="closeScheduleModal()" class="rounded-3xl bg-slate-900 p-3 text-slate-300 hover:bg-slate-800"><i class="fas fa-times"></i></button>
+        </div>
+        <form id="scheduleModalForm" class="mt-6 space-y-5">
+            {% csrf_token %}
+            <input type="hidden" id="scheduleModalTicketIdInput" name="ticket_id" value="" />
+            <div>
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Ticket</p>
+                <p id="scheduleModalTicketId" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Assigned Technician</label>
+                    <input type="text" id="scheduleModalAssigned" name="assigned" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Scheduled Date</label>
+                    <input type="text" id="scheduleModalDate" name="scheduled" placeholder="Month day" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" autocomplete="off" />
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Scheduled Time</label>
+                    <input type="time" id="scheduleModalTime" name="scheduled_time" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+            </div>
+            <div class="flex justify-end gap-3">
+                <button type="button" onclick="closeScheduleModal()" class="rounded-3xl border border-slate-700 bg-slate-900 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-slate-800">Cancel</button>
+                <button type="button" onclick="submitScheduleModal()" class="rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">Save Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="ticketViewModalOverlay" class="hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-40" onclick="closeViewModal()"></div>
+<div id="ticketViewModal" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-10 sm:px-6">
+    <div class="w-full max-w-2xl rounded-[28px] border border-slate-700 bg-slate-950 p-6 shadow-2xl shadow-black/50 overflow-y-auto max-h-[90vh]">
+        <div class="grid gap-5">
+            <div class="rounded-3xl bg-slate-900 p-4">
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Ticket ID</p>
+                <p id="viewTicketId" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+            <div class="rounded-3xl bg-slate-900 p-4">
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Status</p>
+                <p id="viewTicketStatus" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+            <div class="rounded-3xl bg-slate-900 p-4">
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Priority</p>
+                <p id="viewTicketPriority" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+            <div class="rounded-3xl bg-slate-900 p-4">
+                <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Category</p>
+                <p id="viewTicketCategory" class="mt-2 text-base font-semibold text-slate-100"></p>
+            </div>
+        </div>
+        <div class="mt-6 rounded-3xl bg-slate-900 p-5">
+            <p class="text-sm uppercase tracking-[0.24em] text-slate-500">Description</p>
+            <p id="viewTicketDescription" class="mt-3 text-slate-300 leading-7 break-words whitespace-pre-wrap overflow-hidden max-w-full"></p>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button type="button" onclick="closeViewModal()" class="rounded-3xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">Close</button>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+const pendingRescheduleList = [];
+let pendingRescheduleIndex = 0;
+let scheduleModalDatePicker = null;
+
+function loadPendingRescheduleList() {
+    pendingRescheduleList.length = 0;
+    document.querySelectorAll('#pendingRescheduleRequests .pending-reschedule-item').forEach(item => {
+        pendingRescheduleList.push({
+            ticketId: item.dataset.ticketId,
+            description: item.dataset.requestDesc,
+            requestedAt: item.dataset.requestedAt,
+            approveUrl: item.dataset.approveUrl,
+        });
+    });
+}
+
+function getCsrfToken() {
+    const token = document.querySelector('[name=csrfmiddlewaretoken]');
+    return token ? token.value : '';
+}
+
+function closeViewModal() {
+    document.getElementById('ticketViewModal').classList.add('hidden');
+    document.getElementById('ticketViewModalOverlay').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function openRescheduleRequestModal() {
+    document.getElementById('rescheduleRequestModalOverlay').classList.remove('hidden');
+    document.getElementById('rescheduleRequestModalOverlay').classList.remove('hidden');
+    const modal = document.getElementById('rescheduleRequestModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeRescheduleRequestModal() {
+    document.getElementById('rescheduleRequestModalOverlay').classList.add('hidden');
+    const modal = document.getElementById('rescheduleRequestModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function openRescheduleModal(button) {
+    const ticketId = button.dataset.ticketId;
+    const description = button.dataset.requestDesc || 'No details available.';
+    const requestedAt = button.dataset.requestedAt || 'Unknown';
+    const approveUrl = button.dataset.approveUrl || '';
+
+    document.getElementById('rescheduleModalTicketId').textContent = ticketId;
+    document.getElementById('rescheduleModalDescription').textContent = description;
+    const approveBtn = document.getElementById('approveRescheduleRequestBtn');
+    approveBtn.dataset.approveUrl = approveUrl;
+    approveBtn.disabled = false;
+    approveBtn.textContent = 'Approve Request';
+
+    openRescheduleRequestModal();
+}
+
+function openScheduleModal(button) {
+    const ticketId = button.dataset.ticketId;
+    document.getElementById('scheduleModalTicketId').textContent = ticketId;
+    document.getElementById('scheduleModalTicketIdInput').value = ticketId;
+    document.getElementById('scheduleModalAssigned').value = button.dataset.ticketAssigned || '';
+    if (scheduleModalDatePicker) {
+        scheduleModalDatePicker.clear();
+    } else {
+        document.getElementById('scheduleModalDate').value = '';
+    }
+    document.getElementById('scheduleModalTime').value = '';
+    document.getElementById('scheduleModalOverlay').classList.remove('hidden');
+    const modal = document.getElementById('scheduleModal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    document.body.classList.add('overflow-hidden');
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModalOverlay').classList.add('hidden');
+    const modal = document.getElementById('scheduleModal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.body.classList.remove('overflow-hidden');
+}
+
+function submitScheduleModal() {
+    const ticketId = document.getElementById('scheduleModalTicketIdInput').value;
+    const assigned = document.getElementById('scheduleModalAssigned').value.trim();
+    const scheduledTime = document.getElementById('scheduleModalTime').value;
+    
+    if (scheduleModalDatePicker && scheduleModalDatePicker.altInput) {
+        const typedDate = scheduleModalDatePicker.altInput.value.trim();
+        if (typedDate) {
+            scheduleModalDatePicker.setDate(typedDate, false, 'M j');
+        }
+    }
+
+    const scheduledInput = document.getElementById('scheduleModalDate');
+    let scheduled = scheduledInput.value.trim();
+    
+    if (!assigned || !scheduled || !scheduledTime) {
+        alert('Please assign a technician and choose a date and time.');
+        return;
+    }
+
+    const url = `/tickets/${ticketId}/schedule/`;
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': getCsrfToken(),
+        },
+        body: new URLSearchParams({
+            assigned,
+            scheduled,
+            scheduled_time: scheduledTime,
+        }),
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || 'Failed to schedule ticket');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            alert('Ticket scheduled successfully!');
+            window.location.href = data.redirect || '/tickets/';
+        } else {
+            alert(data.error || 'Unable to save schedule.');
+        }
+    })
+    .catch(error => {
+        alert(error.message || 'Unable to save schedule.');
+    });
+}
+
+function openDescriptionModal(description) {
+    const modal = document.getElementById('descriptionModal');
+    const overlay = document.getElementById('descriptionModalOverlay');
+    const content = document.getElementById('descriptionModalContent');
+    content.textContent = description;
+    modal.classList.remove('hidden');
+    overlay.classList.remove('hidden');
+}
+
+function closeDescriptionModal() {
+    const modal = document.getElementById('descriptionModal');
+    const overlay = document.getElementById('descriptionModalOverlay');
+    modal.classList.add('hidden');
+    overlay.classList.add('hidden');
+}
+
+function formatDescriptionTime(description) {
+    if (!description) return description;
+    // Match pattern like "00:21:00" in the description and convert to AM/PM
+    return description.replace(/(\d{2}):(\d{2}):(\d{2})/g, (match, hours, minutes) => {
+        const h = parseInt(hours, 10);
+        const m = parseInt(minutes, 10);
+        const period = h >= 12 ? 'PM' : 'AM';
+        const displayHour = h % 12 || 12;
+        return `${displayHour}:${m.toString().padStart(2, '0')} ${period}`;
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('scheduleModalDate');
+    if (dateInput && window.flatpickr) {
+        scheduleModalDatePicker = flatpickr(dateInput, {
+            altInput: true,
+            altFormat: 'M j',
+            dateFormat: 'Y-m-d',
+            minDate: 'today',
+            allowInput: true,
+            clickOpens: true,
+        });
+
+        if (scheduleModalDatePicker.altInput) {
+            scheduleModalDatePicker.altInput.placeholder = 'Month day';
+        }
+    }
+});
+
+function openPendingRescheduleRequest(index = 0) {
+    loadPendingRescheduleList();
+    if (!pendingRescheduleList.length) {
+        alert('No pending reschedule requests found.');
+        return;
+    }
+
+    pendingRescheduleIndex = Math.max(0, Math.min(index, pendingRescheduleList.length - 1));
+    const request = pendingRescheduleList[pendingRescheduleIndex];
+
+    document.getElementById('rescheduleModalTicketId').textContent = request.ticketId;
+    document.getElementById('rescheduleModalDescription').textContent = formatDescriptionTime(request.description) || 'No details available.';
+    document.getElementById('approveRescheduleRequestBtn').dataset.approveUrl = request.approveUrl || '';
+    document.getElementById('approveRescheduleRequestBtn').disabled = false;
+    document.getElementById('approveRescheduleRequestBtn').textContent = 'Approve Request';
+    document.getElementById('rescheduleModalPosition').textContent = `Request ${pendingRescheduleIndex + 1} of ${pendingRescheduleList.length}`;
+    document.getElementById('prevRescheduleRequestBtn').disabled = pendingRescheduleIndex === 0;
+    document.getElementById('nextRescheduleRequestBtn').disabled = pendingRescheduleIndex === pendingRescheduleList.length - 1;
+    openRescheduleRequestModal();
+}
+
+function openFirstRescheduleRequest() {
+    openPendingRescheduleRequest(0);
+}
+
+function openPrevRescheduleRequest() {
+    openPendingRescheduleRequest(pendingRescheduleIndex - 1);
+}
+
+function openNextRescheduleRequest() {
+    openPendingRescheduleRequest(pendingRescheduleIndex + 1);
+}
+
+function approveRescheduleRequest() {
+    const approveBtn = document.getElementById('approveRescheduleRequestBtn');
+    const url = approveBtn.dataset.approveUrl;
+    if (!url) {
+        alert('Approval URL not available.');
+        return;
+    }
+    approveBtn.disabled = true;
+    approveBtn.textContent = 'Approving...';
+
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data && data.success) {
+            window.location.reload();
+        } else {
+            alert('Failed to approve request: ' + (data.error || 'Unknown error'));
+            approveBtn.disabled = false;
+            approveBtn.textContent = 'Approve Request';
+        }
+    })
+    .catch(() => {
+        alert('Error approving request.');
+        approveBtn.disabled = false;
+        approveBtn.textContent = 'Approve Request';
+    });
+}
+
+function viewTicket(ticketId) {
+    document.getElementById('ticketViewModal').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+
+    fetch(`/api/tickets/${ticketId}/`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Unable to load ticket details');
+        }
+        return response.json();
+    })
+    .then(ticket => {
+        document.getElementById('viewTicketId').textContent = ticket.ticket_id;
+        document.getElementById('viewTicketStatus').textContent = ticket.status;
+        document.getElementById('viewTicketPriority').textContent = ticket.priority;
+        document.getElementById('viewTicketCategory').textContent = ticket.category;
+        document.getElementById('viewTicketDescription').textContent = ticket.description;
+    })
+    .catch(error => {
+        console.error(error);
+        alert('Could not load ticket details.');
+    });
+}
+
+function changeTicketStatus(ticketId) {
+    alert('Ticket status updates are managed through the admin backend.');
+}
+
+function updateDescriptionCounter() {
+    const textarea = document.getElementById('ticketDescription');
+    const counter = document.getElementById('descriptionCounter');
+    counter.textContent = `${textarea.value.length}/1000`;
+}
+
+function handleFileSelect(files) {
+    const preview = document.getElementById('attachmentPreview');
+    preview.innerHTML = '';
+    Array.from(files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between gap-3 rounded-3xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200';
+        item.innerHTML = `<span>${file.name}</span><span>${Math.round(file.size / 1024)} KB</span>`;
+        preview.appendChild(item);
+    });
+}
+
+function handleDrop(evt) {
+    evt.preventDefault();
+    const files = evt.dataTransfer.files;
+    const input = document.getElementById('ticketAttachments');
+    input.files = files;
+    handleFileSelect(files);
+}
+
+function handleDragOver(evt) {
+    evt.preventDefault();
+}
+
+function submitTicket(event) {
+    event.preventDefault();
+    const subject = document.getElementById('ticketSubject').value.trim();
+    const category = document.getElementById('ticketCategory').value.trim();
+    const priority = document.getElementById('ticketPriority').value;
+    const description = document.getElementById('ticketDescription').value.trim();
+
+    if (!subject || !category || !priority || !description) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    const ticketId = 'TKT' + Math.random().toString(16).slice(2, 10).toUpperCase();
+    const today = new Date().toISOString().slice(0, 10);
+    const payload = {
+        ticket_id: ticketId,
+        client: subject,
+        category,
+        priority,
+        status: 'Pending',
+        description,
+        assigned: 'Unassigned',
+        created: today
+    };
+
+    fetch('/api/tickets/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(async response => {
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || 'Unable to create ticket.');
+        }
+        return response.json();
+    })
+    .then(ticket => {
+        appendTicketCard(ticket);
+        closeModal();
+        showToast('Ticket created successfully.');
+        resetTicketForm();
+    })
+    .catch(error => {
+        alert(error.message);
+    });
+}
+
+function appendTicketCard(ticket) {
+    const container = document.getElementById('ticketCards');
+    if (!container) {
+        window.location.reload();
+        return;
+    }
+    const article = document.createElement('article');
+    article.className = 'rounded-[24px] border border-slate-700 bg-slate-950/90 p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl';
+    article.innerHTML = `
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.28em] text-slate-500">
+                    <span>#${ticket.ticket_id}</span>
+                    <span class="rounded-full bg-slate-800 px-3 py-1 text-slate-300">${ticket.category}</span>
+                </div>
+                <div class="text-2xl font-semibold text-slate-100">${ticket.client}</div>
+                <p class="max-w-2xl text-sm leading-6 text-slate-400">${ticket.description}</p>
+                    <div class="flex flex-wrap gap-2">
+                    <span class="status-pill status-pending">Pending</span>
+                    <span class="priority-pill priority-${ticket.priority.toLowerCase()}">${ticket.priority}</span>
+                </div>
+            </div>
+            <div class="flex w-full flex-col gap-4 text-sm text-slate-400 lg:w-72">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Assigned</p>
+                    <p class="mt-1 text-slate-100">${ticket.assigned || 'Unassigned'}</p>
+                </div>
+                <div>
+                    <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Created</p>
+                    <p class="mt-1 text-slate-100">${ticket.created}</p>
+                </div>
+                <button type="button" onclick="viewTicket('${ticket.ticket_id}')" class="rounded-3xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-500">View Details</button>
+            </div>
+        </div>
+    `;
+    container.prepend(article);
+}
+
+function resetTicketForm() {
+    document.getElementById('ticketSubject').value = '';
+    document.getElementById('ticketCategory').value = '';
+    document.getElementById('ticketPriority').value = 'Low';
+    document.getElementById('ticketDescription').value = '';
+    document.getElementById('descriptionCounter').textContent = '0/1000';
+    document.getElementById('ticketAttachments').value = '';
+    document.getElementById('attachmentPreview').innerHTML = '';
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed right-6 bottom-6 z-50 rounded-3xl border border-slate-700 bg-slate-950/95 px-5 py-4 text-sm text-slate-100 shadow-xl shadow-black/40 transition-opacity duration-300';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('opacity-0'), 2600);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('button[data-action="view-ticket"]').forEach(btn => btn.addEventListener('click', () => viewTicket(btn.dataset.ticketId)));
+    document.querySelectorAll('button[data-action="change-status"]').forEach(btn => btn.addEventListener('click', () => changeTicketStatus(btn.dataset.ticketId)));
+});
+</script>
+
+{% endblock %}

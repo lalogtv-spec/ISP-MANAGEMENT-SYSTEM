@@ -1,0 +1,602 @@
+{% extends 'client/base.html' %}
+
+{% block title %}Notification Dashboard - NetConnect ISP{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<style>
+    @keyframes glow-pulse {
+        0%, 100% {
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3), inset 0 0 10px rgba(59, 130, 246, 0.1);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), inset 0 0 15px rgba(59, 130, 246, 0.2);
+        }
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.9; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    
+    @keyframes pulse-border {
+        0%, 100% {
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        50% {
+            border-color: rgba(59, 130, 246, 0.8);
+        }
+    }
+    
+    .notification-new {
+        border: 1.5px solid rgba(59, 130, 246, 0.5);
+        border-radius: 8px;
+        padding: 12px;
+        margin: -12px -12px 12px -12px;
+        background: rgba(59, 130, 246, 0.05);
+    }
+    
+    .new-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        color: white;
+        font-size: 10px;
+        font-weight: bold;
+        padding: 3px 8px;
+        border-radius: 12px;
+        animation: pulse 1.8s ease-in-out infinite;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Notifications Management Styles */
+    .notifications-container {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 10rem);
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .notifications-tabs {
+        display: flex;
+        gap: 0;
+        padding: 12px;
+        background: rgba(15, 23, 42, 0.5);
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    
+    .notifications-tab {
+        flex: 1;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .notifications-tab.active {
+        background: rgba(59, 130, 246, 0.2);
+        color: #3b82f6;
+        border-bottom: 2px solid #3b82f6;
+    }
+    
+    .notifications-tab:hover:not(.active) {
+        background: rgba(59, 130, 246, 0.1);
+        color: #60a5fa;
+    }
+    
+    .tab-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 20px;
+        height: 20px;
+        background: rgba(59, 130, 246, 0.8);
+        color: white;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    
+    .notifications-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px;
+    }
+    
+    .notifications-list::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .notifications-list::-webkit-scrollbar-track {
+        background: rgba(148, 163, 184, 0.1);
+        border-radius: 10px;
+    }
+    
+    .notifications-list::-webkit-scrollbar-thumb {
+        background: rgba(59, 130, 246, 0.3);
+        border-radius: 10px;
+    }
+    
+    .notifications-list::-webkit-scrollbar-thumb:hover {
+        background: rgba(59, 130, 246, 0.5);
+    }
+    
+    .notification-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .notification-card:hover {
+        background: rgba(30, 41, 59, 0.95);
+        border-color: rgba(59, 130, 246, 0.4);
+        transform: translateX(4px);
+    }
+    
+    .notification-card.new {
+        border: 1.5px solid rgba(59, 130, 246, 0.5);
+        background: rgba(59, 130, 246, 0.08);
+        animation: glow-pulse 2.8s ease-in-out infinite;
+    }
+    
+    .notification-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 8px;
+    }
+    
+    .notification-card-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #e2e8f0;
+        margin: 0;
+    }
+    
+    .notification-card-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        font-weight: bold;
+        padding: 2px 8px;
+        border-radius: 12px;
+        white-space: nowrap;
+    }
+    
+    .badge-new {
+        background: rgba(59, 130, 246, 0.9);
+        color: white;
+    }
+    
+    .badge-read {
+        background: rgba(107, 114, 128, 0.3);
+        color: #d1d5db;
+    }
+    
+    .notification-card-client {
+        font-size: 12px;
+        color: #cbd5e1;
+        margin-bottom: 6px;
+    }
+    
+    .notification-card-description {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        line-height: 1.4;
+        max-height: 48px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    
+    .notification-card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: #64748b;
+    }
+    
+    .notification-card-time {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    
+    .notification-card-action {
+        background: transparent;
+        border: 1px solid rgba(59, 130, 246, 0.5);
+        color: #60a5fa;
+        padding: 4px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .notification-card-action:hover {
+        background: rgba(59, 130, 246, 0.2);
+        border-color: #3b82f6;
+        color: #ffffff;
+    }
+    
+    .notifications-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: #64748b;
+    }
+    
+    .notifications-empty-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+    
+    .notifications-empty-text {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+</style>
+
+<script>
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (tokenInput) {
+            return tokenInput.value;
+        }
+        const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+        return match ? match.pop() : '';
+    }
+
+    function switchTab(tabName) {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Remove active class from all tabs
+        document.querySelectorAll('.notifications-tab').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        // Show selected tab content
+        document.getElementById('tab-' + tabName).classList.add('active');
+        
+        // Add active class to clicked tab
+        event.target.closest('.notifications-tab').classList.add('active');
+    }
+    
+    function markAsRead(button, event) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        const notificationType = button.dataset.notificationType;
+        const notificationId = button.dataset.notificationId;
+        const cardElement = button.closest('.notification-card');
+
+        if (!notificationType || !notificationId) {
+            console.error('Notification type or id missing');
+            return;
+        }
+
+        fetch('{% url "dashboard:client-mark-notification-read" %}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({
+                notification_id: notificationId,
+                notification_type: notificationType
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => {
+                    throw new Error(`HTTP ${response.status}: ${text}`);
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to mark notification read');
+            }
+
+            const badge = cardElement ? cardElement.querySelector('.notification-card-badge') : null;
+            if (cardElement) {
+                cardElement.classList.remove('new');
+                cardElement.dataset.read = 'true';
+            }
+            if (badge) {
+                badge.classList.remove('badge-new');
+                badge.classList.add('badge-read');
+                badge.textContent = 'Read';
+            }
+
+            const archiveContainer = document.getElementById('tab-archive');
+            if (archiveContainer && cardElement) {
+                const emptyNotice = archiveContainer.querySelector('.notifications-empty');
+                if (emptyNotice) {
+                    emptyNotice.remove();
+                }
+                archiveContainer.appendChild(cardElement);
+            }
+
+            const activeTabBadge = document.querySelector('.notifications-tab:first-child .tab-badge');
+            const archiveTabBadge = document.querySelector('.notifications-tab:nth-child(2) .tab-badge');
+            if (activeTabBadge) {
+                const currentCount = parseInt(activeTabBadge.textContent, 10) || 0;
+                const nextCount = Math.max(0, currentCount - 1);
+                activeTabBadge.textContent = nextCount;
+            }
+            if (archiveTabBadge) {
+                const currentCount = parseInt(archiveTabBadge.textContent, 10) || 0;
+                archiveTabBadge.textContent = currentCount + 1;
+            }
+            // Update header badge (global unread count)
+            const headerBadge = document.getElementById('header-notif-badge');
+            if (headerBadge) {
+                const headerCount = parseInt(headerBadge.textContent, 10) || 0;
+                const nextHeader = Math.max(0, headerCount - 1);
+                headerBadge.textContent = nextHeader;
+                if (nextHeader === 0) {
+                    headerBadge.remove();
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error marking notification read:', error);
+            alert('Unable to mark notification as read. Try again.');
+        });
+    }
+    
+    function deleteNotification(type, id) {
+        if (confirm('Are you sure you want to delete this notification?')) {
+            const notifElement = document.getElementById('archived-' + id);
+            
+            // Show loading state
+            if (notifElement) {
+                notifElement.style.opacity = '0.5';
+            }
+            
+            // Make AJAX request to delete
+            fetch('{% url "dashboard:client-delete-notification" %}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    notification_id: id,
+                    notification_type: type
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Fade out and remove element
+                    if (notifElement) {
+                        notifElement.style.transition = 'all 0.3s ease';
+                        notifElement.style.opacity = '0';
+                        notifElement.style.height = '0px';
+                        notifElement.style.margin = '0';
+                        setTimeout(() => {
+                            notifElement.remove();
+                            // Update count
+                            const badge = document.querySelector('.notifications-tab:nth-child(2) .tab-badge');
+                            if (badge) {
+                                const count = parseInt(badge.textContent) - 1;
+                                badge.textContent = count;
+                            }
+                        }, 300);
+                    }
+                } else {
+                    alert('Failed to delete notification');
+                    if (notifElement) {
+                        notifElement.style.opacity = '1';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error deleting notification');
+                if (notifElement) {
+                    notifElement.style.opacity = '1';
+                }
+            });
+        }
+    }
+</script>
+
+<div class="space-y-6">
+    <form id="csrf-token-form" style="display:none;">{% csrf_token %}</form>
+    <!-- NOTIFICATIONS MANAGEMENT PANEL -->
+    <div class="notifications-container">
+        <!-- Header -->
+        <div class="p-5 border-b border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div class="min-w-0 sm:pr-6">
+                    <h2 class="text-xl font-bold text-slate-100 m-0">Notifications Management</h2>
+                    <p class="text-sm text-slate-400 mt-1">Search and filter active notification events.</p>
+                </div>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+                    <form method="get" class="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-[480px] min-w-0">
+                        <input type="text" name="q" value="{{ search_query }}" placeholder="Search notifications..." class="flex-1 min-w-0 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 w-full" />
+                        <select name="category" class="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-100 min-w-[160px]">
+                            {% for category in categories %}
+                            <option value="{{ category }}" {% if category == category_filter %}selected{% endif %}>{{ category }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="inline-flex items-center gap-2 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400 transition whitespace-nowrap">
+                            <i class="fas fa-search"></i>
+                            Search
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="notifications-tabs">
+            <button class="notifications-tab active" onclick="switchTab('active')">
+                <i class="fas fa-bell"></i>
+                Active
+                <span class="tab-badge">{{ active_count }}</span>
+            </button>
+            <button class="notifications-tab" onclick="switchTab('archive')">
+                <i class="fas fa-archive"></i>
+                Archive
+                <span class="tab-badge">{{ archived_count }}</span>
+            </button>
+        </div>
+        
+        <!-- Active Tab Content -->
+        <div id="tab-active" class="tab-content active notifications-list">
+            {% if active_notifications %}
+                {% for notification in active_notifications %}
+                <div class="notification-card {% if notification.status == 'New' %}new{% endif %}">
+                    <div class="notification-card-header">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                            <p class="notification-card-title" style="margin: 0; flex: 1;">{{ notification.title }}</p>
+                            <span style="font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px;
+                                {% if notification.category == 'Payment Overdue Alert' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5;
+                                {% elif notification.category == 'Support Tickets' %}background: rgba(168, 85, 247, 0.2); color: #e9d5ff;
+                                {% elif notification.category == 'Payment Received' %}background: rgba(34, 197, 94, 0.2); color: #86efac;
+                                {% else %}background: rgba(100, 116, 139, 0.2); color: #cbd5e1;
+                                {% endif %}">
+                                {{ notification.category }}
+                            </span>
+                        </div>
+                        <span class="notification-card-badge {% if notification.status == 'New' %}badge-new{% else %}badge-read{% endif %}">
+                            {% if notification.status == 'New' %}
+                            <i class="fas fa-circle" style="font-size: 6px;"></i> {{ notification.status }}
+                            {% else %}
+                            {{ notification.status }}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <p class="notification-card-client">
+                        <i class="fas fa-user" style="margin-right: 4px;"></i>{{ notification.client_name }}
+                    </p>
+                    <p class="notification-card-description">{{ notification.description }}</p>
+                    {% if notification.ticket_id %}
+                    <p class="notification-card-description" style="color: #fbbf24; font-weight: 600;">
+                        <i class="fas fa-ticket-alt"></i> Ticket: {{ notification.ticket_id }}
+                    </p>
+                    {% endif %}
+                    {% if notification.amount_due %}
+                    <p class="notification-card-description" style="color: #f59e0b; font-weight: 500;">
+                        <i class="fas fa-money-bill-wave"></i> Amount Due: ₱{{ notification.amount_due }}
+                    </p>
+                    {% endif %}
+                    <div class="notification-card-footer">
+                        <div class="notification-card-time">
+                            <i class="fas fa-clock"></i>
+                            {{ notification.sent_at|date:"M d, Y h:i A" }}
+                        </div>
+                        <button class="notification-card-action" onclick="markAsRead(this, event)" data-notification-type="{{ notification.type }}" data-notification-id="{{ notification.id }}">
+                            {% if notification.status == 'New' %}Mark as Read{% else %}✓ Read{% endif %}
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="notifications-empty">
+                <div class="notifications-empty-icon">📬</div>
+                <p class="notifications-empty-text">No active notifications</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Archive Tab Content -->
+        <div id="tab-archive" class="tab-content notifications-list">
+            {% if archived_notifications %}
+                {% for notification in archived_notifications %}
+                <div class="notification-card" id="archived-{{ notification.id }}">
+                    <div class="notification-card-header">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px;">
+                            <p class="notification-card-title" style="margin: 0; flex: 1;">{{ notification.title }}</p>
+                            <span style="font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 4px;
+                                {% if notification.category == 'Payment Overdue Alert' %}background: rgba(239, 68, 68, 0.2); color: #fca5a5;
+                                {% elif notification.category == 'Support Tickets' %}background: rgba(168, 85, 247, 0.2); color: #e9d5ff;
+                                {% elif notification.category == 'Payment Received' %}background: rgba(34, 197, 94, 0.2); color: #86efac;
+                                {% else %}background: rgba(100, 116, 139, 0.2); color: #cbd5e1;
+                                {% endif %}">
+                                {{ notification.category }}
+                            </span>
+                        </div>
+                        <span class="notification-card-badge badge-read">{{ notification.status }}</span>
+                    </div>
+                    <p class="notification-card-client">
+                        <i class="fas fa-user" style="margin-right: 4px;"></i>{{ notification.client_name }}
+                    </p>
+                    <p class="notification-card-description">{{ notification.description }}</p>
+                    {% if notification.ticket_id %}
+                    <p class="notification-card-description" style="color: #fbbf24; font-weight: 600;">
+                        <i class="fas fa-ticket-alt"></i> Ticket: {{ notification.ticket_id }}
+                    </p>
+                    {% endif %}
+                    {% if notification.amount_due %}
+                    <p class="notification-card-description" style="color: #f59e0b; font-weight: 500;">
+                        <i class="fas fa-money-bill-wave"></i> Amount Due: ₱{{ notification.amount_due }}
+                    </p>
+                    {% endif %}
+                    <div class="notification-card-footer">
+                        <div class="notification-card-time">
+                            <i class="fas fa-clock"></i>
+                            {{ notification.sent_at|date:"M d, Y h:i A" }}
+                        </div>
+                        <button class="notification-card-action" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.5);" onclick="deleteNotification('{{ notification.type }}', '{{ notification.id }}')">
+                            <i class="fas fa-trash mr-1"></i>Delete
+                        </button>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="notifications-empty">
+                <div class="notifications-empty-icon">📦</div>
+                <p class="notifications-empty-text">No archived notifications</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

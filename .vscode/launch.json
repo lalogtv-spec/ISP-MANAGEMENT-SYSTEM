@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Django: Runserver (Python 3.12)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/manage.py",
+      "args": ["runserver", "127.0.0.1:8000"],
+      "django": true,
+      "justMyCode": true,
+      "python": "C:\\Users\\lalog\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "cwd": "${workspaceFolder}/backend"
+    }
+  ]
+}

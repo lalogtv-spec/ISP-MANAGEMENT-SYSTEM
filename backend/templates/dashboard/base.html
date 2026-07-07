@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NetConnect ISP Management{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --fg: #e2e8f0;
+            --muted: #64748b;
+        }
+        body { background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(96, 165, 250, 0.42) rgba(2, 6, 23, 0.42);
+        }
+        *::-webkit-scrollbar { width: 8px; height: 8px; }
+        *::-webkit-scrollbar-track { background: rgba(2, 6, 23, 0.42); }
+        *::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, rgba(125, 211, 252, 0.56), rgba(59, 130, 246, 0.44));
+            border-radius: 9999px;
+            border: 2px solid rgba(2, 6, 23, 0.42);
+        }
+        *::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, rgba(165, 243, 252, 0.72), rgba(96, 165, 250, 0.56));
+        }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+        .badge-active { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-overdue { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+        .badge-disconnected { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .badge-pending { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
+        .badge-approved { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-declined { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .badge-verified { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-rejected { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .badge-open { background: rgba(59,130,246,0.15); color: #3b82f6; border: 1px solid rgba(59,130,246,0.25); }
+        .badge-in-progress { background: rgba(168,85,247,0.15); color: #a855f7; border: 1px solid rgba(168,85,247,0.25); }
+        .badge-resolved { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-closed { background: rgba(107,114,128,0.15); color: #6b7280; border: 1px solid rgba(107,114,128,0.25); }
+        .badge-low { background: rgba(16,185,129,0.15); color: #10b981; border: 1px solid rgba(16,185,129,0.25); }
+        .badge-medium { background: rgba(245,158,11,0.15); color: #f59e0b; border: 1px solid rgba(245,158,11,0.25); }
+        .badge-high { background: rgba(249,115,22,0.15); color: #f97316; border: 1px solid rgba(249,115,22,0.25); }
+        .badge-critical { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+        .nav-link { padding: 10px 12px; border-radius: 8px; font-size: 14px; cursor: pointer; color: var(--muted); transition: 0.2s; display: block; width: 100%; }
+        .nav-link.active { background: rgba(59,130,246,0.15); color: #60a5fa; border-left: 3px solid #2563eb; padding-left: 9px; }
+        .nav-link:hover { color: var(--fg); }
+        html, body { min-width: 0; overflow-x: hidden; }
+        table { width: 100%; table-layout: fixed; }
+        th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; padding: 12px; }
+        td { padding: 12px; border-top: 1px solid var(--border); word-break: break-word; }
+        tr:hover { background: rgba(59,130,246,0.05); }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+</head>
+<body>
+    <div class="flex h-screen overflow-hidden">
+        <!-- SIDEBAR -->
+        <aside class="w-60 bg-slate-900 border-r border-slate-700 flex flex-col fixed h-full">
+            <!-- Logo -->
+            <div class="flex items-center justify-center gap-3 px-4 py-4 border-b border-slate-700 h-16">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0"><i class="fas fa-wifi text-white text-sm"></i></div>
+                <div class="flex flex-col">
+                    <p class="text-sm font-semibold leading-tight">NetConnect</p>
+                    <p class="text-xs text-slate-400 leading-tight">ISP</p>
+                </div>
+            </div>
+
+            <!-- Role Badge -->
+            <div class="px-3 py-4">
+                <div class="bg-blue-600 bg-opacity-10 border border-blue-500 border-opacity-20 rounded px-3 py-2">
+                    <p class="text-xs text-blue-400 font-medium text-center">Admin Portal</p>
+                </div>
+            </div>
+
+            <!-- Nav Menu -->
+            <nav class="flex-1 px-2 py-2 space-y-2 overflow-y-auto">
+                <a href="{% url 'dashboard:dashboard' %}" class="nav-link flex items-center {% if view == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-line w-4 mr-3 flex-shrink-0"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{% url 'dashboard:clients' %}" class="nav-link flex items-center {% if view == 'clients' %}active{% endif %}">
+                    <i class="fas fa-users w-4 mr-3 flex-shrink-0"></i>
+                    <span>Clients</span>
+                </a>
+                <a href="{% url 'dashboard:applications' %}" class="nav-link flex items-center {% if view == 'applications' %}active{% endif %}">
+                    <i class="fas fa-file-alt w-4 mr-3 flex-shrink-0"></i>
+                    <span>Applications</span>
+                </a>
+                <a href="{% url 'dashboard:payments' %}" class="nav-link flex items-center {% if view == 'payments' %}active{% endif %}">
+                    <i class="fas fa-credit-card w-4 mr-3 flex-shrink-0"></i>
+                    <span>Payments</span>
+                </a>
+                <a href="{% url 'dashboard:tickets' %}" class="nav-link flex items-center {% if view == 'tickets' %}active{% endif %}">
+                    <i class="fas fa-headset w-4 mr-3 flex-shrink-0"></i>
+                    <span>Tickets</span>
+                </a>
+                <a href="{% url 'dashboard:notification-dashboard' %}" class="nav-link flex items-center relative {% if view == 'notifications' %}active{% endif %}">
+                    <i class="fas fa-bell w-4 mr-3 flex-shrink-0"></i>
+                    <span>Notifications</span>
+                    {% if notification_count > 0 %}
+                    <span id="sidebar-notification-count" class="absolute right-3 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ notification_count }}</span>
+                    {% endif %}
+                </a>
+                <a href="{% url 'dashboard:notification-templates' %}" class="nav-link flex items-center {% if view == 'templates' %}active{% endif %}">
+                    <i class="fas fa-file-alt w-4 mr-3 flex-shrink-0"></i>
+                    <span>Templates</span>
+                </a>
+                <a href="{% url 'dashboard:audit-log' %}" class="nav-link flex items-center {% if view == 'audit-log' %}active{% endif %}">
+                    <i class="fas fa-history w-4 mr-3 flex-shrink-0"></i>
+                    <span>Audit Log</span>
+                </a>
+                <a href="{% url 'dashboard:testing-panel' %}" class="nav-link flex items-center {% if view == 'testing' %}active{% endif %}">
+                    <i class="fas fa-vial w-4 mr-3 flex-shrink-0"></i>
+                    <span>Testing</span>
+                </a>
+            </nav>
+
+            <!-- Logout -->
+            <div class="px-2 pb-4 border-t border-slate-700 pt-4">
+                <a href="{% url 'dashboard:logout' %}" class="nav-link flex items-center text-red-400 hover:text-red-300">
+                    <i class="fas fa-sign-out-alt w-4 mr-3 flex-shrink-0"></i>
+                    <span>Sign Out</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="flex-1 ml-60 flex flex-col overflow-hidden min-w-0">
+            <!-- HEADER -->
+            <header class="h-16 flex items-center justify-between px-6 border-b border-slate-700 bg-slate-900 bg-opacity-50">
+                <div>
+                    <h2 class="text-base font-semibold">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <p class="text-xs text-slate-400">NetConnect ISP · Jun 16, 2026</p>
+                </div>
+                <div class="flex items-center gap-2"><div class="w-8 h-8 bg-blue-600 bg-opacity-20 border border-blue-500 border-opacity-30 rounded-full flex items-center justify-center text-blue-400 text-xs font-semibold">A</div><div><p class="text-xs font-medium">System Admin</p><p class="text-xs text-slate-400">admin</p></div></div>
+            </header>
+
+            <!-- PAGE CONTENT -->
+            <main class="flex-1 overflow-y-auto p-6">
+                {% if messages %}
+                    <div class="mb-6 space-y-3">
+                        {% for message in messages %}
+                            <div class="rounded-xl border px-4 py-3 text-sm {% if message.tags == 'error' %}border-red-500 bg-red-500/10 text-red-200{% elif message.tags == 'success' %}border-emerald-500 bg-emerald-500/10 text-emerald-200{% else %}border-slate-700 bg-slate-900 text-slate-100{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
+

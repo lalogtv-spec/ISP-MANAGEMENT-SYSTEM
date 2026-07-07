@@ -1,0 +1,81 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Notification Templates - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="rounded-3xl border border-slate-700 bg-slate-950/80 p-6 shadow-lg">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-sm uppercase tracking-[0.28em] text-slate-400 mb-2">Templates</p>
+                <h1 class="text-2xl font-semibold text-white">Notification Message Templates</h1>
+                <p class="mt-2 max-w-2xl text-slate-400">Edit email and SMS templates used for billing, scheduling, payment receipts, and reschedule notifications.</p>
+            </div>
+            <a href="{% url 'dashboard:notification-dashboard' %}" class="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500">
+                <i class="fas fa-chart-line mr-2"></i>
+                Back to Dashboard
+            </a>
+        </div>
+    </section>
+
+    <section class="rounded-3xl border border-slate-700 bg-slate-950/80 p-4 shadow-sm overflow-hidden">
+        <div class="max-h-[60vh] min-h-[20rem] overflow-y-auto pr-2">
+            <table class="table-fixed w-full border-collapse text-sm text-slate-200">
+                <thead>
+                <tr class="border-b border-slate-700 text-left text-xs uppercase tracking-[0.24em] text-slate-500">
+                    <th class="px-4 py-3">Template</th>
+                    <th class="px-4 py-3">Channel</th>
+                    <th class="px-4 py-3">Subject</th>
+                    <th class="px-4 py-3">Message Body</th>
+                    <th class="px-4 py-3">Last Updated</th>
+                    <th class="px-4 py-3 text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+                {% for template in templates %}
+                <tr class="hover:bg-slate-900/70">
+                    <td class="px-4 py-4 align-top">
+                        {% if template.template_type == 'First Notice' %}
+                            <span class="badge bg-sky-500/15 text-sky-300 border border-sky-500/20">First Notice</span>
+                        {% elif template.template_type == 'Second Notice' %}
+                            <span class="badge bg-amber-500/15 text-amber-300 border border-amber-500/20">Second Notice</span>
+                        {% elif template.template_type == 'Disconnection Warning' %}
+                            <span class="badge bg-red-500/15 text-red-300 border border-red-500/20">Disconnection Warning</span>
+                        {% elif template.template_type == 'Service Scheduled' %}
+                            <span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">Service Scheduled</span>
+                        {% elif template.template_type == 'Service Rescheduled' %}
+                            <span class="badge bg-violet-500/15 text-violet-300 border border-violet-500/20">Service Rescheduled</span>
+                        {% elif template.template_type == 'Payment Receipt' %}
+                            <span class="badge bg-blue-500/15 text-blue-300 border border-blue-500/20">Payment Receipt</span>
+                        {% else %}
+                            <span class="badge bg-slate-700 text-slate-200">{{ template.template_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-4 align-top">
+                        {% if template.channel == 'Email' %}
+                            <span class="badge bg-blue-600/15 text-blue-300 border border-blue-500/10">Email</span>
+                        {% else %}
+                            <span class="badge bg-slate-700 text-slate-200">SMS</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-4 align-top text-slate-100 max-w-xs truncate">{{ template.subject|default:'—' }}</td>
+                    <td class="px-4 py-4 align-top text-slate-300 max-w-2xl truncate">{{ template.body|truncatewords:20 }}</td>
+                    <td class="px-4 py-4 align-top text-slate-400">{{ template.updated_at|date:"M d, Y H:i" }}</td>
+                    <td class="px-4 py-4 align-top text-right">
+                        <a href="{% url 'dashboard:edit-notification-template' template.template_id %}" class="inline-flex items-center rounded-2xl bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-600">
+                            <i class="fas fa-edit mr-2"></i> Edit
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-12 text-center text-slate-500">No templates available yet.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+

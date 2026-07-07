@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "ispmanagement-43a4c"
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  }
+}

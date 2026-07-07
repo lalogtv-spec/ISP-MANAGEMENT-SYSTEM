@@ -1,0 +1,58 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}{{ payment.payment_id }} - ISP Management System{% endblock %}
+{% block page_title %}Payment: {{ payment.payment_id }}{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px;">
+    <div class="card-header">
+        <h3>Payment Details</h3>
+        <a href="{% url 'dashboard:payment_edit' payment.payment_id %}" class="btn btn-primary">Edit</a>
+    </div>
+    <div class="card-body">
+        <table style="width: 100%; line-height: 2;">
+            <tr>
+                <td><strong>Payment ID:</strong></td>
+                <td>{{ payment.payment_id }}</td>
+            </tr>
+            <tr>
+                <td><strong>Client:</strong></td>
+                <td>{{ payment.client }}</td>
+            </tr>
+            <tr>
+                <td><strong>Date:</strong></td>
+                <td>{{ payment.date|date:"M d, Y" }}</td>
+            </tr>
+            <tr>
+                <td><strong>Amount:</strong></td>
+                <td style="font-size: 18px; font-weight: bold; color: var(--success);">₱{{ payment.amount }}</td>
+            </tr>
+            <tr>
+                <td><strong>Period:</strong></td>
+                <td>{{ payment.period }}</td>
+            </tr>
+            <tr>
+                <td><strong>Method:</strong></td>
+                <td>{{ payment.method }}</td>
+            </tr>
+            <tr>
+                <td><strong>Status:</strong></td>
+                <td>
+                    <span class="badge badge-{% if payment.status == 'Verified' %}success{% elif payment.status == 'Rejected' %}danger{% else %}warning{% endif %}">
+                        {{ payment.status }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<div style="margin-top: 20px; display: flex; gap: 10px;">
+    <a href="{% url 'dashboard:payment_edit' payment.payment_id %}" class="btn btn-primary">Edit Payment</a>
+    <form method="post" action="{% url 'dashboard:payment_delete' payment.payment_id %}" style="display: inline;" onsubmit="return confirm('Are you sure?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">Delete Payment</button>
+    </form>
+    <a href="{% url 'dashboard:payments_list' %}" class="btn" style="background: #e5e7eb; color: #1f2937;">Back to List</a>
+</div>
+{% endblock %}

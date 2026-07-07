@@ -1,0 +1,13 @@
+{
+  "python.defaultInterpreterPath": "C:\\Users\\lalog\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ],
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+  "chat.tools.terminal.autoApprove": {
+    "/^cd \"c:\\\\Users\\\\lalog\\\\Videos\\\\Internet Payment Tracking\\\\backend\"; python manage\\.py test dashboard\\.tests\\.LoginPageViewTests --verbosity 2$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}

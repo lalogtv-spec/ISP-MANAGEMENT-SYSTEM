@@ -1,0 +1,68 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Clients - ISP Management System{% endblock %}
+{% block page_title %}Clients{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; gap: 10px;">
+    <form method="get" style="display: flex; gap: 10px; flex: 1;">
+        <input type="text" name="search" placeholder="Search clients..." value="{{ search_query }}" style="flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;">
+        <select name="status" style="padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;">
+            <option value="">All Status</option>
+            <option value="Active" {% if status_filter == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Overdue" {% if status_filter == 'Overdue' %}selected{% endif %}>Overdue</option>
+            <option value="Disconnected" {% if status_filter == 'Disconnected' %}selected{% endif %}>Disconnected</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+    <a href="{% url 'dashboard:client_create' %}" class="btn btn-primary">+ New Client</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        {% if clients %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Plan</th>
+                    <th>Fee</th>
+                    <th>Status</th>
+                    <th>Balance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for client in clients %}
+                <tr>
+                    <td><strong>{{ client.name }}</strong></td>
+                    <td>{{ client.email }}</td>
+                    <td>{{ client.phone }}</td>
+                    <td>{{ client.plan }}</td>
+                    <td>₱{{ client.fee }}</td>
+                    <td>
+                        <span class="badge badge-{% if client.status == 'Active' %}success{% elif client.status == 'Overdue' %}danger{% else %}warning{% endif %}">
+                            {{ client.status }}
+                        </span>
+                    </td>
+                    <td style="color: {% if client.balance > 0 %}var(--danger){% else %}var(--success){% endif %};">₱{{ client.balance }}</td>
+                    <td>
+                        <a href="{% url 'dashboard:client_detail' client.client_id %}" class="btn btn-primary btn-sm">View</a>
+                        <a href="{% url 'dashboard:client_edit' client.client_id %}" class="btn btn-primary btn-sm">Edit</a>
+                        <form method="post" action="{% url 'dashboard:client_delete' client.client_id %}" style="display: inline;" onsubmit="return confirm('Delete this client?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; color: #6b7280; padding: 20px;">No clients found</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

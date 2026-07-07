@@ -1,0 +1,109 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Edit Notification Template - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <section class="rounded-3xl border border-slate-700 bg-slate-950/80 p-6 shadow-lg">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <p class="text-sm uppercase tracking-[0.28em] text-slate-400 mb-2">Template Editor</p>
+                <h1 class="text-2xl font-semibold text-white">Edit Notification Template</h1>
+                <p class="mt-2 text-slate-400 max-w-2xl">
+                    Adjust the fields below to update how email and SMS notifications are sent to clients.
+                </p>
+            </div>
+            <a href="{% url 'dashboard:notification-templates' %}" class="inline-flex items-center justify-center rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800">
+                <i class="fas fa-arrow-left mr-2"></i>
+                Back to Templates
+            </a>
+        </div>
+    </section>
+
+    {% if success %}
+    <div id="save-toast" class="fixed right-6 top-24 z-50 w-full max-w-sm rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 shadow-2xl backdrop-blur-sm text-slate-50">
+        <div class="flex items-start gap-3">
+            <div class="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300">
+                <i class="fas fa-check"></i>
+            </div>
+            <div>
+                <p class="font-semibold text-white">Template saved</p>
+                <p class="text-sm text-slate-200">{{ message }}</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <section class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <div class="rounded-3xl border border-slate-700 bg-slate-950/80 p-6 shadow-sm">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="grid gap-6">
+                    <div class="grid gap-2">
+                        <label class="text-sm font-semibold text-slate-200">Template Type</label>
+                        {{ form.template_type }}
+                    </div>
+
+                    <div class="grid gap-2">
+                        <label class="text-sm font-semibold text-slate-200">Channel</label>
+                        {{ form.channel }}
+                    </div>
+
+                    {% if template.channel == 'Email' %}
+                    <div class="grid gap-2">
+                        <label class="text-sm font-semibold text-slate-200">Email Subject</label>
+                        {{ form.subject }}
+                        <p class="text-xs text-slate-500">This field is only used for Email templates.</p>
+                    </div>
+                    {% endif %}
+
+                    <div class="grid gap-2">
+                        <label class="text-sm font-semibold text-slate-200">Message Body</label>
+                        {{ form.body }}
+                        <p class="text-xs text-slate-500">Use variables below to personalize the notification text.</p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 pt-2">
+                        <button type="submit" class="inline-flex items-center rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-500">
+                            <i class="fas fa-save mr-2"></i> Save Changes
+                        </button>
+                        <a href="{% url 'dashboard:notification-templates' %}" class="inline-flex items-center rounded-2xl border border-slate-700 bg-slate-900 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800">
+                            Cancel
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div>
+            <div class="rounded-3xl border border-slate-700 bg-slate-950/80 p-6 shadow-sm">
+                <h2 class="text-lg font-semibold text-white mb-4">Preview</h2>
+                {% if template.channel == 'Email' %}
+                <div class="rounded-2xl border border-slate-700 bg-slate-900 p-4 mb-4">
+                    <p class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-2">Subject</p>
+                    <p class="text-slate-100 font-medium">{{ template.subject }}</p>
+                </div>
+                {% endif %}
+                <div class="rounded-2xl border border-slate-700 bg-slate-900 p-4">
+                    <p class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">Message</p>
+                    <div class="whitespace-pre-wrap text-slate-100 text-sm leading-6">{{ template.body }}</div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+{% if success %}
+{% block extra_js %}
+<script>
+    setTimeout(function() {
+        var toast = document.getElementById('save-toast');
+        if (toast) {
+            toast.classList.add('opacity-0');
+        }
+    }, 4000);
+</script>
+{% endblock %}
+{% endif %}
+{% endblock %}
+

@@ -1,0 +1,106 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Schedule Service - {{ ticket.ticket_id }} - ISP Management System{% endblock %}
+{% block page_title %}Schedule Service for {{ ticket.ticket_id }}{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-4xl space-y-6">
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-[0_25px_80px_rgba(15,23,42,0.45)]">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h1 class="text-3xl font-semibold text-slate-100">Schedule Service</h1>
+                <p class="mt-2 text-sm text-slate-400">Assign a technician and schedule a house visit to fix the issue.</p>
+            </div>
+        </div>
+    </section>
+
+    {% if error %}
+    <div class="rounded-3xl bg-red-900/10 border border-red-700 p-4 text-sm text-red-100">
+        {{ error }}
+    </div>
+    {% endif %}
+
+
+    <section class="rounded-[32px] border border-slate-700 bg-slate-950/95 p-6 shadow-sm">
+        <form id="scheduleForm" method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Client</label>
+                    <div class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100">{{ ticket.client }}</div>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Category</label>
+                    <div class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100">{{ ticket.category }}</div>
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-3">
+                <div class="space-y-2">
+                    <label for="assigned" class="block text-sm font-medium text-slate-200">Assigned Technician</label>
+                    <input type="text" id="assigned" name="assigned" value="{{ ticket.assigned|default:'' }}" placeholder="Technician name" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" />
+                </div>
+                <div class="space-y-2">
+                    <label for="scheduled" class="block text-sm font-medium text-slate-200">Scheduled Date</label>
+                    <input type="text" id="scheduled" name="scheduled" value="{% if ticket.scheduled_date %}{{ ticket.scheduled_date|date:'Y-m-d' }}{% endif %}" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" autocomplete="off" />
+                </div>
+                <div class="space-y-2">
+                    <label for="scheduled_time" class="block text-sm font-medium text-slate-200">Scheduled Time</label>
+                    <input type="text" id="scheduled_time" name="scheduled_time" value="{% if ticket.scheduled_time %}{{ ticket.scheduled_time|time:'H:i' }}{% endif %}" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" autocomplete="off" />
+                </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Priority</label>
+                    <div class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100">{{ ticket.priority }}</div>
+                </div>
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-slate-200">Current Status</label>
+                    <div class="rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100">{{ ticket.status }}</div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <label for="notes" class="block text-sm font-medium text-slate-200">Service Notes</label>
+                <textarea id="notes" name="notes" rows="4" placeholder="Optional notes for the technician" class="w-full rounded-3xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none"></textarea>
+            </div>
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                <button id="saveScheduleBtn" type="submit" class="inline-flex items-center justify-center rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-500">Save Schedule</button>
+            </div>
+        </form>
+    </section>
+</div>
+<script>
+    (function(){
+        const form = document.getElementById('scheduleForm');
+        const btn = document.getElementById('saveScheduleBtn');
+        if (form && btn) {
+            form.addEventListener('submit', function (e) {
+                if (btn.disabled) {
+                    e.preventDefault();
+                    return;
+                }
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+            });
+        }
+    })();
+</script>
+<!-- flatpickr for admin schedule date/time -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    (function(){
+        try {
+            const currentYear = new Date().getFullYear();
+            flatpickr('#scheduled', { altInput: true, altFormat: 'F j, Y', dateFormat: 'Y-m-d', minDate: 'today', maxDate: `${currentYear}-12-31` });
+            flatpickr('#scheduled_time', { enableTime: true, noCalendar: true, dateFormat: 'h:i K', time_24hr: false });
+        } catch (e) {
+            console.error('flatpickr init failed', e);
+        }
+    })();
+</script>
+{% endblock %}

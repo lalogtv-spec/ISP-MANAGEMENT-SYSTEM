@@ -1,0 +1,122 @@
+{% extends "client/base.html" %}
+
+{% block title %}Payment Confirmation - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto mt-10">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        
+        {% if success %}
+            <!-- Success Message -->
+            <div class="text-center mb-8">
+                <div class="mx-auto h-16 w-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-green-600 mb-2">Payment Successful!</h2>
+                <p class="text-gray-600">Your payment has been received and recorded.</p>
+            </div>
+
+            <!-- Success Details -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Client Name</label>
+                        <p class="mt-1 text-gray-900 font-semibold">{{ client.name }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Payment Status</label>
+                        <p class="mt-1 text-green-600 font-semibold">✓ Verified</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Date & Time</label>
+                        <p class="mt-1 text-gray-900 font-semibold">{{ now|date:"M d, Y H:i" }}</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">New Balance</label>
+                        <p class="mt-1 text-gray-900 font-semibold">₱{{ client.balance|default:"0.00" }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What's Next -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+                <h3 class="font-semibold text-blue-900 mb-3">What Happens Next?</h3>
+                <ul class="text-sm text-blue-800 space-y-2">
+                    <li class="flex items-start">
+                        <span class="inline-block w-5 h-5 bg-blue-600 text-white rounded-full text-center text-xs leading-5 mr-3 flex-shrink-0">✓</span>
+                        <span>Your payment will appear in your payment history within minutes</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block w-5 h-5 bg-blue-600 text-white rounded-full text-center text-xs leading-5 mr-3 flex-shrink-0">✓</span>
+                        <span>You'll receive an email confirmation of your payment</span>
+                    </li>
+                    <li class="flex items-start">
+                        <span class="inline-block w-5 h-5 bg-blue-600 text-white rounded-full text-center text-xs leading-5 mr-3 flex-shrink-0">✓</span>
+                        <span>Your account balance has been updated automatically</span>
+                    </li>
+                </ul>
+            </div>
+
+        {% else %}
+            <!-- Error/Pending Message -->
+            <div class="text-center mb-8">
+                <div class="mx-auto h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+                    <svg class="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-yellow-600 mb-2">Payment Pending</h2>
+                <p class="text-gray-600">{{ message }}</p>
+            </div>
+
+            <!-- Pending Details -->
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                    <p class="text-gray-900 font-semibold">{{ client.name }}</p>
+                </div>
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Current Balance</label>
+                    <p class="text-gray-900 font-semibold">₱{{ pending_amount|default:"0.00" }}</p>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-8">
+                <h3 class="font-semibold text-orange-900 mb-3">What to do next?</h3>
+                <ul class="text-sm text-orange-800 space-y-2">
+                    <li>• Your payment is being processed by GCash</li>
+                    <li>• This usually takes 1-5 minutes</li>
+                    <li>• Check your payment history to see the updated status</li>
+                    <li>• Contact support if payment is not verified after 30 minutes</li>
+                </ul>
+            </div>
+
+        {% endif %}
+
+        <!-- Action Buttons -->
+        <div class="flex flex-col gap-3">
+            <a 
+                href="{% url 'dashboard:client-payments' %}" 
+                class="text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200"
+            >
+                View Payment History
+            </a>
+            <a 
+                href="{% url 'dashboard:client-dashboard' %}" 
+                class="text-center bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold py-3 px-4 rounded-lg transition duration-200"
+            >
+                Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Contact Support -->
+        <div class="mt-8 text-center text-sm text-gray-600">
+            <p>Having issues with your payment? <a href="{% url 'dashboard:client-tickets' %}" class="text-blue-600 hover:underline">Contact support</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

@@ -1,0 +1,449 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Face Enrollment{% endblock %}
+
+{% block content %}
+<style>
+    .enroll-shell {
+        width: 100%;
+        min-height: calc(100vh - 4rem);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+    }
+    .enroll-modal {
+        width: min(760px, 100%);
+        max-height: min(900px, calc(100vh - 40px));
+        border-radius: 28px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(3, 10, 24, 0.97);
+        box-shadow: 0 30px 90px rgba(0, 0, 0, 0.45);
+        padding: 24px;
+        color: white;
+        position: relative;
+    }
+    .enroll-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 42px;
+        height: 42px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.95);
+        color: white;
+        cursor: pointer;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+    }
+    .enroll-eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.22em;
+        font-size: 11px;
+        color: #7dd3fc;
+        font-weight: 800;
+    }
+    .enroll-title {
+        margin: 10px 0 8px;
+        font-size: 26px;
+        font-weight: 900;
+    }
+    .enroll-description {
+        color: #94a3b8;
+        font-size: 14px;
+        line-height: 1.7;
+        margin: 0;
+    }
+    .enroll-video-shell {
+        position: relative;
+        margin-top: 16px;
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: #020617;
+        aspect-ratio: 4 / 3;
+    }
+    .enroll-action-overlay {
+        position: absolute;
+        left: 50%;
+        bottom: 16px;
+        transform: translateX(-50%);
+        z-index: 3;
+        display: flex;
+        justify-content: center;
+        pointer-events: none;
+    }
+    .enroll-action-overlay .enroll-btn {
+        pointer-events: auto;
+        width: auto;
+        min-width: min(220px, calc(100vw - 64px));
+        padding: 14px 20px;
+        border-radius: 999px;
+        box-shadow: 0 16px 40px rgba(2, 6, 23, 0.35);
+        backdrop-filter: blur(10px);
+    }
+    .enroll-video-shell video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        background: #01040b;
+    }
+    .enroll-face-frame {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+    .enroll-face-frame::before {
+        content: '';
+        width: min(72%, 320px);
+        aspect-ratio: 1;
+        border: 2px solid rgba(255, 255, 255, 0.75);
+        border-radius: 28px;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+    }
+    .enroll-status-box {
+        margin-top: 14px;
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        background: rgba(15, 23, 42, 0.9);
+        padding: 14px 16px;
+    }
+    .enroll-status-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: #7dd3fc;
+        margin-bottom: 6px;
+    }
+    .enroll-status-line {
+        color: #f8fafc;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .enroll-status-detail {
+        margin-top: 4px;
+        color: #94a3b8;
+        font-size: 13px;
+    }
+    .enroll-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+    }
+    .enroll-actions form {
+        flex: 1 1 auto;
+        min-width: 120px;
+    }
+    .enroll-btn {
+        width: 100%;
+        border: none;
+        border-radius: 18px;
+        padding: 16px 18px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 13px;
+    }
+    .enroll-btn-primary {
+        background: linear-gradient(135deg, #38bdf8, #818cf8);
+        color: white;
+        box-shadow: 0 18px 35px rgba(56, 189, 248, 0.18);
+    }
+    .enroll-btn-primary:hover {
+        filter: brightness(1.07);
+        transform: translateY(-1px);
+        box-shadow: 0 22px 40px rgba(56, 189, 248, 0.22);
+    }
+    .enroll-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .enroll-btn-secondary {
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(15, 23, 42, 0.88);
+        color: white;
+    }
+    .enroll-btn-secondary:hover {
+        border-color: rgba(56, 189, 248, 0.4);
+        background: rgba(15, 23, 42, 0.96);
+    }
+    .enroll-preview-box {
+        margin-top: 14px;
+        border-radius: 20px;
+        border: 1px dashed rgba(148, 163, 184, 0.3);
+        background: rgba(15, 23, 42, 0.9);
+        padding: 14px 16px;
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .enroll-preview-box img {
+        width: 100%;
+        height: auto;
+        border-radius: 16px;
+        object-fit: cover;
+    }
+    .enroll-preview-placeholder {
+        color: #94a3b8;
+        font-size: 13px;
+        text-align: center;
+    }
+    .hidden { display: none !important; }
+    .enrolled-images {
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    .enrolled-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 12px;
+    }
+    .enrolled-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+    }
+    .enrolled-item {
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        overflow: hidden;
+        background: rgba(15, 23, 42, 0.75);
+    }
+    .enrolled-item img {
+        width: 100%;
+        height: 120px;
+        object-fit: cover;
+        display: block;
+    }
+</style>
+
+<div class="enroll-shell">
+    <div class="enroll-modal">
+        <a href="/" class="enroll-close" title="Back to dashboard">✕</a>
+
+        <div class="enroll-eyebrow">Biometric Setup</div>
+        <h2 class="enroll-title">Face Enrollment</h2>
+        <p class="enroll-description">Register your face for future logins. Keep your face centered, use good lighting, and capture a clear frontal image.</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="flash-message" style="margin-top: 12px; padding: 12px 14px; border-radius: 14px; font-size: 14px; border: 1px solid {% if message.tags == 'success' %}rgba(34, 197, 94, 0.26){% else %}rgba(248, 113, 113, 0.26){% endif %}; background: {% if message.tags == 'success' %}rgba(34, 197, 94, 0.12){% else %}rgba(248, 113, 113, 0.12){% endif %}; color: {% if message.tags == 'success' %}#bbf7d0{% else %}#fecaca{% endif %};">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="enroll-video-shell">
+            <video id="enroll-video" autoplay playsinline muted></video>
+            <div class="enroll-face-frame"></div>
+            <div class="enroll-action-overlay">
+                <button type="button" id="capture-enroll" class="enroll-btn enroll-btn-primary">Capture Photo</button>
+            </div>
+        </div>
+
+        <div class="enroll-status-box">
+            <div class="enroll-status-title">Camera Status</div>
+            <div id="enroll-status" class="enroll-status-line">Initializing camera...</div>
+            <div id="enroll-detail" class="enroll-status-detail">Please allow camera access when prompted by your browser.</div>
+        </div>
+
+        <div class="enroll-preview-box">
+            <img id="enroll-preview" class="hidden" alt="Enrollment preview">
+            <div id="enroll-placeholder" class="enroll-preview-placeholder">No face captured yet. Use the Capture Photo button above.</div>
+        </div>
+
+            <form method="post" class="enroll-actions">
+            {% csrf_token %}
+            <input type="hidden" name="face_image_data" id="face-image-input">
+            <button type="button" id="reset-enroll" class="enroll-btn enroll-btn-secondary">Reset</button>
+            <button type="submit" id="submit-enroll" class="enroll-btn enroll-btn-primary" style="display: none; flex: 1 1 100%">Save Enrollment</button>
+        </form>
+
+        {% if enrollment_images %}
+        <div class="enrolled-images">
+            <div class="enrolled-title">✓ Enrolled Images ({{ enrollment_images|length }})</div>
+            <div class="enrolled-grid">
+                {% for image in enrollment_images %}
+                    <div class="enrolled-item">
+                        <img src="{{ image.image.url }}" alt="Enrolled face">
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+const video = document.getElementById('enroll-video');
+const captureButton = document.getElementById('capture-enroll');
+const resetButton = document.getElementById('reset-enroll');
+const submitBtn = document.getElementById('submit-enroll');
+const preview = document.getElementById('enroll-preview');
+const placeholder = document.getElementById('enroll-placeholder');
+const status = document.getElementById('enroll-status');
+const detail = document.getElementById('enroll-detail');
+const hiddenInput = document.getElementById('face-image-input');
+
+let stream = null;
+let isCapturing = false;
+let capturedData = null;
+
+async function startCamera() {
+    try {
+        status.textContent = 'Starting camera...';
+        detail.textContent = 'Please allow camera access when prompted.';
+
+        if (!navigator.mediaDevices?.getUserMedia) {
+            status.textContent = 'Camera not available';
+            detail.textContent = 'Your browser does not support camera access. Use file upload instead.';
+            captureButton.disabled = true;
+            return;
+        }
+
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        video.srcObject = stream;
+
+        await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error('Camera did not respond')), 10000);
+            video.onloadedmetadata = () => {
+                clearTimeout(timeout);
+                resolve();
+            };
+        });
+
+        await video.play().catch(() => undefined);
+        status.textContent = '✓ Camera ready';
+        detail.textContent = 'Press Start Front Capture to begin the guided enrollment flow.';
+        captureButton.textContent = posePhases[currentPhaseIndex].actionLabel;
+        captureButton.disabled = false;
+    } catch (error) {
+        console.error('Camera error:', error);
+        status.textContent = 'Camera error';
+        detail.textContent = `${error.message}. Use file upload instead.`;
+        captureButton.disabled = true;
+    }
+}
+
+function readCurrentFrame() {
+    if (!stream || !video.videoWidth || !video.videoHeight) {
+        return null;
+    }
+
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext('2d');
+
+        if (!context) {
+            return null;
+        }
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.92);
+    } catch (error) {
+        console.error('Capture error:', error);
+        return null;
+    }
+}
+
+function showCapturedPreview(dataUrl) {
+    if (!dataUrl) {
+        return;
+    }
+
+    preview.src = dataUrl;
+    preview.classList.remove('hidden');
+    placeholder.classList.add('hidden');
+}
+
+function captureOnce() {
+    if (isCapturing) return;
+    if (!stream || !video.videoWidth || !video.videoHeight) {
+        alert('Camera is not ready yet. Please wait a moment and try again.');
+        return;
+    }
+
+    isCapturing = true;
+    captureButton.disabled = true;
+    resetButton.disabled = true;
+    submitBtn.style.display = 'none';
+
+    try {
+        const dataUrl = readCurrentFrame();
+        if (!dataUrl || dataUrl.length < 100) {
+            throw new Error('A frame could not be captured.');
+        }
+        capturedData = dataUrl;
+        showCapturedPreview(dataUrl);
+        hiddenInput.value = JSON.stringify([dataUrl]);
+        submitBtn.style.display = 'block';
+        status.textContent = '✓ Photo captured';
+        detail.textContent = 'Review the captured photo and click Save Enrollment to complete.';
+        captureButton.textContent = 'Capture Photo';
+    } catch (error) {
+        console.error('Capture error:', error);
+        status.textContent = 'Capture failed';
+        detail.textContent = `${error.message}. Please try again.`;
+    } finally {
+        isCapturing = false;
+        captureButton.disabled = false;
+        resetButton.disabled = false;
+    }
+}
+
+function resetPreview() {
+    preview.src = '';
+    preview.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    hiddenInput.value = '';
+    capturedData = null;
+    submitBtn.style.display = 'none';
+    status.textContent = '✓ Camera ready';
+    detail.textContent = 'Press Capture Photo to take a single snapshot for enrollment.';
+    captureButton.textContent = 'Capture Photo';
+}
+
+function stopCamera() {
+    if (!stream) return;
+    stream.getTracks().forEach((track) => track.stop());
+    stream = null;
+}
+
+captureButton.addEventListener('click', () => captureOnce());
+resetButton.addEventListener('click', () => resetPreview());
+
+startCamera();
+
+window.addEventListener('beforeunload', () => stopCamera());
+// Auto-hide flash messages on this page too
+(function() {
+    const TIMEOUT_MS = 6000;
+    const flashes = Array.from(document.querySelectorAll('.flash-message'));
+    if (!flashes.length) return;
+    setTimeout(() => {
+        flashes.forEach(el => {
+            try {
+                el.style.transition = 'opacity 400ms ease, transform 400ms ease';
+                el.style.opacity = '0';
+                el.style.transform = 'translateY(-8px)';
+                setTimeout(() => el.remove(), 450);
+            } catch (e) {}
+        });
+    }, TIMEOUT_MS);
+})();
+</script>
+{% endblock %}

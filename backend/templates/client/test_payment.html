@@ -1,0 +1,132 @@
+{% extends "client/base.html" %}
+
+{% block title %}Test GCash Payment - NetConnect ISP{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <div class="mb-8">
+            <h2 class="text-3xl font-bold text-gray-900">GCash Payment Simulation</h2>
+            <p class="text-gray-600 mt-2">Test payment for development mode</p>
+        </div>
+
+        {% if error %}
+            <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                <div class="flex items-center">
+                    <svg class="w-5 h-5 text-red-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <p class="text-red-700">{{ error }}</p>
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        <strong>Test Mode:</strong> This is a mock payment page for development. In production, you would be redirected to the real GCash payment gateway.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Payment Details -->
+            <div class="bg-gray-50 p-6 rounded-lg">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Payment Details</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Reference ID:</span>
+                        <span class="font-mono text-gray-900">{{ reference_id }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">Amount:</span>
+                        <span class="text-lg font-bold text-blue-600">₱{{ amount|floatformat:2 }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Status Selection -->
+            <div class="space-y-3">
+                <label class="block text-sm font-medium text-gray-900">Payment Status</label>
+                
+                <!-- Success -->
+                <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-green-500 transition">
+                    <input 
+                        type="radio" 
+                        name="payment_status" 
+                        value="success" 
+                        checked
+                        class="h-4 w-4 text-green-600"
+                    />
+                    <div class="ml-3 flex-1">
+                        <p class="font-medium text-gray-900">✓ Payment Successful</p>
+                        <p class="text-sm text-gray-600">Simulate successful GCash payment</p>
+                    </div>
+                </label>
+
+                <!-- Failed -->
+                <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-red-500 transition">
+                    <input 
+                        type="radio" 
+                        name="payment_status" 
+                        value="failed"
+                        class="h-4 w-4 text-red-600"
+                    />
+                    <div class="ml-3 flex-1">
+                        <p class="font-medium text-gray-900">✗ Payment Failed</p>
+                        <p class="text-sm text-gray-600">Simulate failed GCash payment</p>
+                    </div>
+                </label>
+
+                <!-- Cancelled -->
+                <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-orange-500 transition">
+                    <input 
+                        type="radio" 
+                        name="payment_status" 
+                        value="cancelled"
+                        class="h-4 w-4 text-orange-600"
+                    />
+                    <div class="ml-3 flex-1">
+                        <p class="font-medium text-gray-900">○ Payment Cancelled</p>
+                        <p class="text-sm text-gray-600">User cancelled the payment</p>
+                    </div>
+                </label>
+            </div>
+
+            <!-- Buttons -->
+            <div class="flex gap-4">
+                <button 
+                    type="submit" 
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200"
+                >
+                    Proceed with Selected Status
+                </button>
+                <a 
+                    href="{% url 'dashboard:client-payments' %}" 
+                    class="px-6 py-3 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold rounded-lg transition duration-200"
+                >
+                    Cancel
+                </a>
+            </div>
+
+            <!-- Info Box -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p class="text-sm text-blue-800">
+                    <strong>Note:</strong> This page is only available in development mode (USE_MOCK_MODE = True). 
+                    When you submit this form, it will simulate the GCash payment response and redirect you to the payment confirmation page.
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

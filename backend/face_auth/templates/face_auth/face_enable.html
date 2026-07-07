@@ -1,0 +1,31 @@
+{% extends 'dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Enable Facial Login{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto p-6 bg-slate-950/80 rounded-3xl border border-slate-700">
+    <h1 class="text-3xl font-bold text-white">Enable Facial Login</h1>
+    <p class="mt-3 text-slate-400">Toggle facial login after successful password authentication.</p>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="mt-4 p-4 rounded-2xl {% if message.tags == 'success' %}bg-emerald-500/10 border border-emerald-500/20 text-emerald-200{% else %}bg-rose-500/10 border border-rose-500/20 text-rose-200{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" class="mt-6 space-y-4">
+        {% csrf_token %}
+        <div class="rounded-3xl border border-slate-700 bg-slate-900 p-6">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold text-white">Facial login</h2>
+                    <p class="mt-2 text-sm text-slate-400">Only enable this if you have completed face enrollment.</p>
+                </div>
+                {{ form.enable_face_login }}
+            </div>
+        </div>
+        <button type="submit" class="inline-flex items-center justify-center rounded-2xl bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950">Save Preferences</button>
+    </form>
+</div>
+{% endblock %}

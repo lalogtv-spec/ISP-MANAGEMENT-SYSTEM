@@ -1,0 +1,363 @@
+{% extends "dashboard/base.html" %}
+
+{% block title %}Applications - NetConnect ISP{% endblock %}
+{% block page_title %}Applications{% endblock %}
+
+{% block content %}
+<div class="space-y-4">
+    <form method="get" class="grid gap-3 md:grid-cols-[1.5fr_auto] items-end">
+        {% csrf_token %}
+        <div>
+            <label for="search" class="sr-only">Search applications</label>
+            <input type="text" name="search" id="search" value="{{ search_query }}" placeholder="Search applications..." class="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white" />
+        </div>
+        <div>
+            <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500">Search</button>
+        </div>
+    </form>
+    <div class="text-xs text-slate-400">Only pending applications stay in this queue. Approved and declined ones are moved out automatically.</div>
+
+    <div class="card overflow-hidden">
+        <div class="overflow-x-auto">
+            {% if applications %}
+            <table class="min-w-full text-left text-sm text-slate-200">
+                <thead class="border-b border-slate-700 text-slate-300 bg-slate-950/80">
+                    <tr>
+                        <th class="px-4 py-3">Applicant Name</th>
+                        <th class="px-4 py-3">Location</th>
+                        <th class="px-4 py-3">Plan</th>
+                        <th class="px-4 py-3">Date Applied</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr class="border-b border-slate-800 hover:bg-slate-800/50">
+                        <td class="px-4 py-3">
+                            <div class="text-sm font-semibold">{{ app.name }}</div>
+                            <div class="text-xs text-slate-400">{{ app.email }}</div>
+                        </td>
+                        <td class="px-4 py-3">
+                            {% if app.latitude and app.longitude %}
+                                <div class="text-xs text-slate-400">{{ app.latitude }}, {{ app.longitude }}</div>
+                            {% else %}
+                                <span class="text-xs text-slate-400">No GPS data</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3">{{ app.plan }}</td>
+                        <td class="px-4 py-3">{{ app.date }}</td>
+                        <td class="px-4 py-3"><span class="badge badge-{{ app.status|lower }}">{{ app.status }}</span></td>
+                        <td class="px-4 py-3 flex items-center gap-2">
+                            <button type="button" data-action="view-app" data-app-id="{{ app.app_id }}" class="text-blue-300 hover:text-blue-200 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-700 bg-slate-900/80" title="View application">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button type="button" data-action="approve" data-app-id="{{ app.app_id }}" class="text-emerald-300 hover:text-emerald-200 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-700 bg-slate-900/80" title="Approve application">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button type="button" data-action="decline" data-app-id="{{ app.app_id }}" class="text-rose-300 hover:text-rose-200 inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-700 bg-slate-900/80" title="Reject application">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="p-6 text-center text-slate-400">No applications found.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-200">
+        <div>
+            Showing {{ page_obj.start_index }} - {{ page_obj.end_index }} of {{ page_obj.paginator.count }} applications
+        </div>
+        <div class="flex items-center gap-2">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}" class="rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700">Previous</a>
+            {% endif %}
+            <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if status_filter %}&status={{ status_filter|urlencode }}{% endif %}" class="rounded-lg bg-slate-800 px-3 py-2 hover:bg-slate-700">Next</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+let currentAppId = null;
+let currentAppData = null;
+let currentModalMode = 'view';
+const rejectionReasonLimit = 250;
+
+function getCsrfToken() {
+    const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (tokenInput) {
+        return tokenInput.value;
+    }
+    const cookieMatch = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+    return cookieMatch ? decodeURIComponent(cookieMatch[2]) : '';
+}
+
+function setRejectionReasonState() {
+    const reasonTextarea = document.getElementById('rejectionReason');
+    const reasonCounter = document.getElementById('rejectionReasonCounter');
+    const rejectButton = document.getElementById('rejectAppButton');
+    if (!reasonTextarea || !reasonCounter || !rejectButton) {
+        return;
+    }
+
+    const chars = reasonTextarea.value.length;
+    const overBy = Math.max(0, chars - rejectionReasonLimit);
+    const isInvalid = chars === 0 || overBy > 0;
+
+    reasonTextarea.classList.toggle('border-rose-500', overBy > 0);
+    reasonTextarea.classList.toggle('focus:border-rose-500', overBy > 0);
+    reasonTextarea.classList.toggle('focus:border-blue-500', overBy <= 0);
+    reasonTextarea.setAttribute('aria-invalid', isInvalid ? 'true' : 'false');
+
+    reasonCounter.textContent = overBy > 0 ? `Exceeded by ${overBy} characters` : `${chars}/${rejectionReasonLimit} characters`;
+    reasonCounter.classList.toggle('text-rose-400', overBy > 0);
+    reasonCounter.classList.toggle('text-emerald-300', overBy <= 0);
+    rejectButton.disabled = isInvalid;
+    rejectButton.classList.toggle('opacity-50', isInvalid);
+    rejectButton.classList.toggle('cursor-not-allowed', isInvalid);
+}
+
+function openApplicationModal(appId, mode = 'view') {
+    currentAppId = appId;
+    currentModalMode = mode;
+    fetch(`/api/applications/${appId}/`, {
+        method: 'GET',
+        headers: {'X-CSRFToken': getCsrfToken()}
+    })
+    .then(r => {
+        if (!r.ok) {
+            throw new Error(`API error: ${r.status} ${r.statusText}`);
+        }
+        return r.json();
+    })
+    .then(data => {
+        document.getElementById('aViewName').textContent = data.name;
+        document.getElementById('aViewEmail').textContent = data.email;
+        document.getElementById('aViewPlan').textContent = data.plan;
+        document.getElementById('aViewDate').textContent = data.date;
+        document.getElementById('aViewStatus').textContent = data.status;
+        document.getElementById('aViewLatitude').textContent = data.latitude ?? '-';
+        document.getElementById('aViewLongitude').textContent = data.longitude ?? '-';
+        const modalTitle = document.getElementById('appModalTitle');
+        const modalSubtitle = document.getElementById('appModalSubtitle');
+        const reviewBox = document.getElementById('rejectionReviewBox');
+        const reasonTextarea = document.getElementById('rejectionReason');
+        const rejectButton = document.getElementById('rejectAppButton');
+        const approveButton = document.getElementById('approveAppButton');
+        const reviewLabel = document.getElementById('rejectionReviewLabel');
+
+        currentAppData = data;
+        if (modalTitle) {
+            modalTitle.textContent = mode === 'review' ? 'Review & Reject Application' : 'Application Details';
+        }
+        if (modalSubtitle) {
+            modalSubtitle.textContent = mode === 'review'
+                ? 'Check the application details, write the rejection reason, and submit from this modal.'
+                : 'Review the applicant information before taking action.';
+        }
+        if (reviewBox) {
+            reviewBox.classList.toggle('hidden', mode !== 'review');
+        }
+        if (reviewLabel) {
+            reviewLabel.textContent = mode === 'review' ? 'Rejection Reason' : 'Rejection Reason (hidden)';
+        }
+        if (reasonTextarea) {
+            reasonTextarea.value = '';
+            reasonTextarea.classList.remove('border-rose-500', 'focus:border-rose-500');
+            reasonTextarea.classList.add('focus:border-blue-500');
+        }
+        if (rejectButton) {
+            rejectButton.classList.toggle('hidden', mode !== 'review');
+            rejectButton.disabled = true;
+        }
+        if (approveButton) {
+            approveButton.classList.toggle('hidden', mode === 'review');
+        }
+        const mapLink = document.getElementById('aViewMapLink');
+        if (data.latitude && data.longitude) {
+            mapLink.href = `https://www.google.com/maps?q=${data.latitude},${data.longitude}`;
+            mapLink.classList.remove('hidden');
+        } else {
+            mapLink.classList.add('hidden');
+        }
+        document.getElementById('appViewModal').classList.remove('hidden');
+        if (mode === 'review') {
+            setTimeout(() => {
+                if (reasonTextarea) {
+                    reasonTextarea.focus();
+                }
+            }, 0);
+        }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert(`Error loading application details: ${err.message}`);
+    });
+}
+
+function approveApp(appId) {
+    updateAppStatus(appId, 'Approved', 'approved');
+}
+
+function declineApp(appId) {
+    openApplicationModal(appId, 'review');
+}
+
+function updateAppStatus(appId, status, type, reason = '') {
+    fetch(`/api/applications/${appId}/`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify({ status, reason })
+    })
+    .then(r => {
+        if (!r.ok) {
+            return r.json().then(data => {
+                throw new Error(data.detail || `API error: ${r.status}`);
+            });
+        }
+        return r.json();
+    })
+    .then(() => {
+        alert(`Application ${type}`);
+        setTimeout(() => location.reload(), 500);
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        alert(`Error updating application: ${err.message}`);
+    });
+}
+
+function deleteApp(appId) {
+    if (confirm('Delete this application?')) {
+        fetch(`/api/applications/${appId}/`, {
+            method: 'DELETE',
+            headers: {'X-CSRFToken': getCsrfToken()}
+        })
+        .then(r => {
+            if (r.ok) {
+                alert('Application deleted');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Error deleting application');
+            }
+        })
+        .catch(err => {
+            alert('Error deleting application');
+            console.error(err);
+        });
+    }
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+}
+
+function submitRejectFromModal() {
+    if (!currentAppId) {
+        return;
+    }
+    const reasonTextarea = document.getElementById('rejectionReason');
+    const reason = reasonTextarea ? reasonTextarea.value.trim() : '';
+    if (!reason) {
+        alert('Please enter a rejection reason.');
+        if (reasonTextarea) {
+            reasonTextarea.focus();
+        }
+        return;
+    }
+    if (reason.length > rejectionReasonLimit) {
+        alert(`Rejection reason must be ${rejectionReasonLimit} characters or less.`);
+        if (reasonTextarea) {
+            reasonTextarea.focus();
+        }
+        return;
+    }
+    updateAppStatus(currentAppId, 'Declined', 'declined', reason);
+}
+
+function onReasonInput() {
+    setRejectionReasonState();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('button[data-action="view-app"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            openApplicationModal(this.dataset.appId, 'view');
+        });
+    });
+
+    document.querySelectorAll('button[data-action="approve"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            approveApp(this.dataset.appId);
+        });
+    });
+
+    document.querySelectorAll('button[data-action="decline"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            declineApp(this.dataset.appId);
+        });
+    });
+
+    document.querySelectorAll('button[data-action="delete-app"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            deleteApp(this.dataset.appId);
+        });
+    });
+});
+
+// Search and status filtering is handled on the server via the GET form.
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'appViewModal') closeModal('appViewModal');
+});
+</script>
+
+<!-- VIEW MODAL -->
+<div id="appViewModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-slate-700 rounded-2xl p-6 w-[min(92vw,44rem)] border border-slate-600 shadow-2xl">
+        <div class="flex justify-between items-center mb-4">
+            <div>
+                <h3 id="appModalTitle" class="text-lg font-bold">Application Details</h3>
+                <p id="appModalSubtitle" class="text-xs text-slate-400 mt-1">Review the applicant information before taking action.</p>
+            </div>
+            <button onclick="closeModal('appViewModal')" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="space-y-3 text-sm">
+            <div><span class="text-slate-400">Name:</span> <span id="aViewName" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Email:</span> <span id="aViewEmail" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Plan:</span> <span id="aViewPlan" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Date Applied:</span> <span id="aViewDate" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Status:</span> <span id="aViewStatus" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Latitude:</span> <span id="aViewLatitude" class="font-medium"></span></div>
+            <div><span class="text-slate-400">Longitude:</span> <span id="aViewLongitude" class="font-medium"></span></div>
+            <a id="aViewMapLink" class="hidden text-blue-400 hover:text-blue-300 text-sm" href="#" target="_blank" rel="noopener noreferrer">Open map</a>
+        </div>
+        <div id="rejectionReviewBox" class="mt-5 hidden">
+            <label id="rejectionReviewLabel" for="rejectionReason" class="block text-sm font-medium text-slate-200 mb-2">Rejection Reason</label>
+            <textarea id="rejectionReason" name="rejectionReason" rows="4" maxlength="250" oninput="onReasonInput()" class="w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm text-slate-100 focus:border-blue-500 focus:outline-none" aria-describedby="rejectionReasonHelper"></textarea>
+            <div id="rejectionReasonHelper" class="mt-2 text-center">
+                <p class="text-xs text-slate-500">Explain the rejection clearly, up to 250 characters.</p>
+                <p id="rejectionReasonCounter" class="mt-1 font-medium text-emerald-300">0/250 characters</p>
+            </div>
+        </div>
+        <div class="mt-6 flex gap-2 flex-wrap">
+            <button id="approveAppButton" onclick="approveApp(currentAppId)" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-xl">Approve</button>
+            <button id="rejectAppButton" onclick="submitRejectFromModal()" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white py-2 rounded-xl">Reject</button>
+            <button onclick="closeModal('appViewModal')" class="flex-1 bg-slate-600 hover:bg-slate-500 text-white py-2 rounded-xl">Close</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
