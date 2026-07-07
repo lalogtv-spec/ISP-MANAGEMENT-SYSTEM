@@ -1,11 +1,23 @@
+# ISP-MANAGEMENT-SYSTEM
 
-  # Build user system
+A web and mobile internet management system.
 
-  This is a code bundle for Build user system. The original project is available at https://www.figma.com/design/pmnKxZIsiMTwVB8TlCtp3i/Build-user-system.
+This repository contains the ISP Management System backend and client components.
 
-  ## Running the code
+## Running the project
 
-  Run `npm i` to install the dependencies.
+1. Navigate to the backend folder:
+   ```powershell
+   cd backend
+   ```
+2. Install dependencies:
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
+3. Run the Django project:
+   ```powershell
+   python manage.py runserver
+   ```
 
-  Run `npm run dev` to start the development server.
-  
+For full setup instructions, refer to the backend README files and documentation.
+
