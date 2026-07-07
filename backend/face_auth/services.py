@@ -6,7 +6,10 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.base import ContentFile
 
-import cv2
+try:
+    import cv2
+except ImportError:  # pragma: no cover - optional biometric dependency
+    cv2 = None
 
 
 class FaceAuthService:
@@ -149,6 +152,9 @@ class FaceAuthService:
 
     @staticmethod
     def validate_image_content(image_data):
+        if cv2 is None:
+            return False, 'OpenCV is not installed. Face authentication is unavailable.'
+
         FaceAuthService.ensure_directories()
         temp_path = FaceAuthService.create_temp_image(image_data)
         try:
